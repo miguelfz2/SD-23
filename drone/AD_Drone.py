@@ -6,10 +6,6 @@ CABECERA = 64
 
 def send(code,client):
     msg = code.encode(FORMATO)
-    msg_length = len(msg)
-    send_length = str(msg_length).encode(FORMATO)
-    send_length += b' ' * (CABECERA - len(send_length))
-    client.send(send_length)
     client.send(msg)
 
 def menu():
@@ -30,15 +26,26 @@ def crea_dron(client):
     print('--------CREACION DE DRON---------')
     print("---------------------------------")
     alias = input('Introduce el alias del dron: ')
-    send(alias,client)
+    #ENVIAMOS EL ALIAS AL SOCKET
+    send("1."+alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
-    print("Tu id es el "+respuesta)
+    print("Tu token es "+respuesta)
 
-#def edita_dron(client):
-#    send()
 
-#def elimina_dron(client):
-#    send()
+def edita_dron(client):
+    print("---------------------------------")
+    print('--------CREACION DE DRON---------')
+    print("---------------------------------")
+    alias = input('Introduce el alias del dron a editar: ')
+    #ENVIAMOS EL ALIAS AL SOCKET
+    send("2."+alias,client)
+    respuesta = client.recv(2048).decode(FORMATO)
+    print("Tu token es "+respuesta)
+
+"""
+def elimina_dron(client):
+    send()
+"""
 
 def main():
     if len(sys.argv[1:]) < 2:
