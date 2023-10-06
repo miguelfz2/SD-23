@@ -5,87 +5,86 @@ import datetime
 import sys
 
 FORMATO = 'utf-8'
-conn = sqlite3.connect('drones.db') #Base de datos
-cursor = conn.cursor() #Cursor para instrucciones en DB
 
-#Obtenemos el ultimo id para crear el nuevo
-def obtener_ultimo_id():
-    cursor.execute('SELECT MAX(id) FROM drones')
-    max_id = cursor.fetchone()[0]
-    if max_id is not None:
-        return max_id
-    else:
-        max_id = 0
-        return max_id
+def obtener_conexion():
+    return sqlite3.connect('drones.db')  # Base de datos
 
-#Generamos un token de acceso que utilizará el dron
+def obtener_cursor(conexion):
+    return conexion.cursor()  # Cursor para instrucciones en DB
+
+def obtener_ultimo_id(cursor):
+    cursor.execute('SELECT MAX(id) FROM dron')
+    resultado = cursor.fetchone()[0]
+    return resultado if resultado is not None else 0
+
 def generar_token(id):
-    token = "t"+id
+    token = "t"  # Lógica para generar el token de acceso
     return token
 
-#Registramos el dron con su alias y generamos el nuevo id (id+1), devolvemos el token de acceso
-def registrar_dron(alias):
-    ultimo_id = obtener_ultimo_id()
+def registrar_dron(alias, cursor):
+    ultimo_id = obtener_ultimo_id(cursor)
     nuevo_id = ultimo_id + 1
     token_acceso = generar_token(nuevo_id)
     nuevo_dron = (nuevo_id, alias, token_acceso)
-    cursor.execute('INSERT INTO drones (id, alias, token_acceso) VALUES (?, ?, ?)', nuevo_dron)
-    conn.commit()    
+    cursor.execute('INSERT INTO dron (id, alias, token) VALUES (?, ?, ?)', nuevo_dron)
     return token_acceso
 
-#Funcion que obtiene el primer id de un alias
-def obtener_id_por_alias(alias):
-    cursor.execute('SELECT id FROM drones WHERE alias = ?', (alias,))
+def obtener_id_por_alias(alias, cursor):
+    cursor.execute('SELECT id FROM dron WHERE alias = ?', (alias,))
     resultado = cursor.fetchone()
     return resultado[0] if resultado else None
 
-#Funcion que edita un alias en la base de datos
-def editar_alias(alias, nuevo_alias):
-    dron_id = obtener_id_por_alias(alias)
+def editar_alias(alias, nuevo_alias, cursor):
+    dron_id = obtener_id_por_alias(alias, cursor)
     if dron_id:
         cursor.execute('UPDATE drones SET alias = ? WHERE id = ?', (nuevo_alias, dron_id))
-        conn.commit()
         return f"Alias del Dron ID '{dron_id}' editado a '{nuevo_alias}'"
     else:
         return "Dron no encontrado con el alias proporcionado."
 
-#Funcion que se le pasa un alias, calcula el id y lo elimina de la DB
-def eliminar_dron(alias):
-    dron_id = obtener_id_por_alias(alias)
+def eliminar_dron(alias, cursor):
+    dron_id = obtener_id_por_alias(alias, cursor)
     if dron_id:
-        cursor.execute('DELETE FROM drones WHERE id = ?', (dron_id,))
-        conn.commit()
+        cursor.execute('DELETE FROM dron WHERE id = ?', (dron_id,))
         return f"Dron con Alias '{alias}' eliminado exitosamente."
     else:
         return "Dron no encontrado con el alias proporcionado."
 
-
-#Funcion para que AD_Register funcione como un servidor concurrente
 def handle_client(client_socket):
-    alias = client_socket.recv(2048).decode(FORMATO)
-    opcion = alias.split(".")[0]
-    alias = alias.split(".")[1]
+    datos = client_socket.recv(2048).decode(FORMATO)
+    opcion = datos.split(".")[0]
+    alias = datos.split(".")[1]
+    if len(datos.split("."))==3:
+        nuevo_alias = datos.split(".")[2]  
+    # Establecer una nueva conexión y cursor para cada hilo
+    conexion = obtener_conexion()
+    cursor = obtener_cursor(conexion)
 
-    if len(alias.split("."))==3:
-        nuevo_alias = alias.split(".")[2]
     print(f"Conexión establecida con el dron {alias}")
     print(f"Opcion {opcion}")
-    if opcion == "1": 
+
+    if opcion == "1":
         msg = "Creando dron."
         msg = msg.encode(FORMATO)
         client_socket.send(msg)
-        token_acceso = registrar_dron(alias)
-        print(f"Dron registrado con ID '{obtener_ultimo_id() }', Alias '{alias}'.")
-        client_socket.send(token_acceso.encode())
-        client_socket.close()
+        token_acceso = registrar_dron(alias, cursor)
+        print(f"Dron registrado con ID '{obtener_ultimo_id(cursor)}', Alias '{alias}'.")
+        client_socket.send(token_acceso.encode(FORMATO))
     elif opcion == "2":
-        msg = editar_alias(alias, nuevo_alias)
+        msg = editar_alias(alias, nuevo_alias, cursor)
         client_socket.send(msg.encode(FORMATO))
     elif opcion == "3":
-        msg = eliminar_dron(alias)
+        msg = eliminar_dron(alias, cursor)
+        client_socket.send(msg.encode(FORMATO))
     else:
-        s="s"
-    
+        msg = "Opción no válida."
+        client_socket.send(msg.encode(FORMATO))
+
+    # Cerrar la conexión después de realizar la operación
+    conexion.commit()
+    conexion.close()
+    client_socket.close()
+
 if len(sys.argv) != 2:
     print("Error: formato: script.py <puerto>")
     sys.exit(1)
@@ -95,9 +94,9 @@ try:
 except ValueError:
     print("Por favor, introduce un número de puerto válido.")
     sys.exit(1)
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_host = '192.168.250.185'
 
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_host = '192.168.250.185'  
 server_socket.bind((server_host, server_port))
 server_socket.listen(5)
 
@@ -107,4 +106,3 @@ while True:
     client_socket, client_address = server_socket.accept()
     client_thread = threading.Thread(target=handle_client, args=(client_socket,))
     client_thread.start()
-
