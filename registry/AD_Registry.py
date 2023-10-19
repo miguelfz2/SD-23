@@ -96,7 +96,7 @@ except ValueError:
     sys.exit(1)
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_host = '192.168.250.185'  
+server_host = 'localhost'  
 server_socket.bind((server_host, server_port))
 server_socket.listen(5)
 

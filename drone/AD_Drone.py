@@ -30,6 +30,7 @@ def crea_dron(client):
     send("1."+alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
     print("Tu token es "+respuesta)
+    envia_token(respuesta)
 
 
 def edita_dron(client):
@@ -42,21 +43,29 @@ def edita_dron(client):
     respuesta = client.recv(2048).decode(FORMATO)
     print("Tu token es "+respuesta)
 
+def envia_token(token):
+    ipEngine = sys.argv[1]
+    puertoEngine = int(sys.argv[2])
+    ADDR_eng = (ipEngine,puertoEngine)
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(ADDR_eng)
+    send(token,client)
+
 """
 def elimina_dron(client):
     send()
 """
 
 def main():
-    if len(sys.argv[1:]) < 2:
-        print('ARGUMENTOS INCORRECTOS: python3 AD_Drone.py <IP> <puerto>')
+    if len(sys.argv[1:]) < 6:
+        print('ARGUMENTOS INCORRECTOS: python3 AD_Drone.py <IP> <puerto> (Engine) <IP> <puerto> (Kafka) <IP> <puerto> (Registro)')
         return -1
     else:
         opc = menu()
         print(opc)
-       	ip = sys.argv[1]
-        puerto =int(sys.argv[2])
-        ADDR = (ip,puerto)
+       	ipRegistro = sys.argv[5]
+        puertoRegistro =int(sys.argv[6])
+        ADDR = (ipRegistro,puertoRegistro)
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.connect(ADDR)
 
