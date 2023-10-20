@@ -1,63 +1,64 @@
 import socket
-import sys
+import sqlite3
 import threading
 
-HEADER = 64
-PORT = int(sys.argv[1])
-SERVER = 'localhost'
-ADDR = (SERVER, PORT)
-FORMAT = 'utf-8'
+# Ruta de la base de datos
+DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-def recibe_token(conn,addr):
-    print(f"[NUEVA CONEXION] {addr} connected.")
-
-    connected = True
-    while connected:
-        token = conn.recv(HEADER).decode(FORMAT)
-        #print(f"El token es {token}".encode(FORMAT))
-        #connected = False
-        ###COMPROBAR TOKEN EN BBDD
-        #if valida_token(token) == True:
-            #connected = False
-            #conn.send(f"HOLA DRON: token correcto!!!: {token} ".encode(FORMAT))
-        #else:
-        #   connected = False
-        #   conn.send(f"ERROR: TOKEN NO EXISTENTE!!!".encode(FORMAT))
-    print("ADIOS. TE ESPERO EN OTRA OCASION")
+# Función para verificar el token y el alias en la base de datos
+def verificar_registro(token, alias):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM dron WHERE token=? AND alias=?', (token, alias))
+    result = cursor.fetchone()
     conn.close()
+    return result is not None
 
+# Función que maneja las conexiones de los clientes
+def handle_client(client_socket, addr):
+    print(f"Cliente conectado desde {addr}")
+    
+    # Recibir datos del cliente (token y alias)
+    data = client_socket.recv(1024).decode('utf-8')
+    token, alias = data.split(',')
+    
+    # Verificar el registro en la base de datos
+    if verificar_registro(token, alias):
+        # Cliente registrado, enviar mensaje de OK
+        client_socket.send('OK'.encode('utf-8'))
+    else:
+        # Cliente no registrado, enviar mensaje para registrarse
+        client_socket.send('Por favor, regístrese.'.encode('utf-8'))
+    
+    # Cerrar la conexión con el cliente
+    client_socket.close()
+    print(f"Cliente {addr} desconectado.")
 
-#def valida_token(token):
-    ##BUSCAR EN LA BD EL TOKEN Y DEVOLVER TRUE SI SE ENCUENTRA, FALSE EN CASO CONTRARIO
-
-def start():
-    server.listen()
-    print(f"[LISTENING] Servidor a la escucha en {SERVER}")
-    CONEX_ACTIVAS = threading.active_count()-1
-    MAX_CONEXIONES = int(sys.argv[2])
-    print(CONEX_ACTIVAS)
-    while True:
-        conn, addr = server.accept()
-        CONEX_ACTIVAS = threading.active_count()
-        if (CONEX_ACTIVAS <= MAX_CONEXIONES):
-            thread = threading.Thread(target=recibe_token, args=(conn, addr))
-            thread.start()
-            print(f"[CONEXIONES ACTIVAS] {CONEX_ACTIVAS}")
-            print("DRONES RESTANTES PARA EMPEZAR EL ESPECTÁCULO: ", MAX_CONEXIONES-CONEX_ACTIVAS)
-        else:
-            print("FLOTA DE DRONES COMPLETA. A LA ESPERA DE ALGUNA BAJA PARA RETOMAR CONEXIONES.")
-            conn.send("OOppsss... DEMASIADAS CONEXIONES. Tendrás que esperar a que alguien se vaya".encode(FORMAT))
-            conn.close()
-            CONEX_ACTUALES = threading.active_count()-1
-
+# Configurar el socket del servidor
+HOST = '127.0.0.1'  # Dirección IP del servidor
+PORT = 12345         # Puerto del servidor
 
 def main():
-    server.bind(ADDR)
-    print("[STARTING] Servidor inicializándose...")
-    start()
+        # Crear un socket de servidor
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((HOST, PORT))
+    server_socket.listen(5)
+    print(f"Servidor en el puerto {PORT} esperando conexiones...")
 
+    try:
+        while True:
+            # Esperar a que un cliente se conecte
+            client_socket, addr = server_socket.accept()
+            
+            # Crear un nuevo subproceso para manejar la conexión del cliente
+            client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
+            client_thread.start()
+
+    except KeyboardInterrupt:
+        print("Servidor detenido.")
+    finally:
+        # Cerrar el socket del servidor al finalizar
+        server_socket.close()
 
 if __name__ == "__main__":
     main()
