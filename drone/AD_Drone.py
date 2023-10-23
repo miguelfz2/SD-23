@@ -1,5 +1,6 @@
 import socket
 import sys
+from kafka import KafkaConsumer
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -42,6 +43,7 @@ def edita_dron(client):
     send("2."+alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
     print("Tu token es "+respuesta)
+    envia_token(respuesta)
 
 def envia_token(token):
     ipEngine = sys.argv[1]
@@ -52,6 +54,24 @@ def envia_token(token):
     send(token,client)
     respuesta = client.recv(2048).decode(FORMATO)
     print(respuesta)
+    recibe_mapa()
+
+
+def recibe_mapa():
+    consumer = KafkaConsumer('topic',bootstrap_server='localhost:9092', group_id='grupo')
+     try:
+        for message in consumer:
+            print(f"Recibido mapa: {message.value}")
+            mapa = message.value
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        consumer.close()
+
+
+
+
 """
 def elimina_dron(client):
     send()

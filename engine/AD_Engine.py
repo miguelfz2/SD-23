@@ -1,6 +1,8 @@
 import socket
 import sqlite3
 import threading
+from kafka import KafkaProducer
+import time
 
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
@@ -13,6 +15,25 @@ def verificar_registro(token):
     result = cursor.fetchone()
     conn.close()
     return result is not None
+
+def servir_mapa():
+    producer = KafkaProducer(bootstrap_servers='localhost:9092')
+    topic = 'topic'
+
+    try:
+        while True:
+            # Simula la generación de un par de posiciones
+            posiciones = [(1, 2), (3, 4), (5, 6)]
+
+            for posicion in posiciones:
+                # Envía el par de posiciones al topic 'posiciones'
+                producer.send(topic, value=str(posicion))
+                time.sleep(1)  # Pausa para simular la generación de posiciones cada 1 segundo
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        producer.close()
 
 # Función que maneja las conexiones de los clientes
 def handle_client(client_socket, addr):
@@ -27,6 +48,7 @@ def handle_client(client_socket, addr):
     if verificar_registro(token):
         # Cliente registrado, enviar mensaje de OK
         client_socket.send('OK'.encode('utf-8'))
+        servir_mapa()
     else:
         # Cliente no registrado, enviar mensaje para registrarse
         client_socket.send('Por favor, regístrese.'.encode('utf-8'))
