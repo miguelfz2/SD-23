@@ -58,8 +58,8 @@ def envia_token(token):
 
 
 def recibe_mapa():
-    consumer = KafkaConsumer('topic',bootstrap_server='localhost:9092', group_id='grupo')
-     try:
+    consumer = KafkaConsumer('topic', bootstrap_servers='localhost:9092', group_id='grupo')
+    try:
         for message in consumer:
             print(f"Recibido mapa: {message.value}")
             mapa = message.value

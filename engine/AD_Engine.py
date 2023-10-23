@@ -18,7 +18,7 @@ def verificar_registro(token):
 
 def servir_mapa():
     producer = KafkaProducer(bootstrap_servers='localhost:9092')
-    topic = 'topic'
+    topic = 'SD'
 
     try:
         while True:
@@ -59,7 +59,7 @@ def handle_client(client_socket, addr):
 
 # Configurar el socket del servidor
 HOST = 'localhost'  # Dirección IP del servidor
-PORT = 23456         # Puerto del servidor
+PORT = 12345         # Puerto del servidor
 
 def main():
         # Crear un socket de servidor
