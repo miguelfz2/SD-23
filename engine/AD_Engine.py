@@ -6,10 +6,10 @@ import threading
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 
 # Función para verificar el token y el alias en la base de datos
-def verificar_registro(token, alias):
+def verificar_registro(token):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM dron WHERE token=? AND alias=?', (token, alias))
+    cursor.execute('SELECT * FROM dron WHERE token=?', (token,))
     result = cursor.fetchone()
     conn.close()
     return result is not None
@@ -20,10 +20,11 @@ def handle_client(client_socket, addr):
     
     # Recibir datos del cliente (token y alias)
     data = client_socket.recv(1024).decode('utf-8')
-    token, alias = data.split(',')
+    token = data
+    print(token)
     
     # Verificar el registro en la base de datos
-    if verificar_registro(token, alias):
+    if verificar_registro(token):
         # Cliente registrado, enviar mensaje de OK
         client_socket.send('OK'.encode('utf-8'))
     else:
@@ -35,8 +36,8 @@ def handle_client(client_socket, addr):
     print(f"Cliente {addr} desconectado.")
 
 # Configurar el socket del servidor
-HOST = '127.0.0.1'  # Dirección IP del servidor
-PORT = 12345         # Puerto del servidor
+HOST = 'localhost'  # Dirección IP del servidor
+PORT = 23456         # Puerto del servidor
 
 def main():
         # Crear un socket de servidor

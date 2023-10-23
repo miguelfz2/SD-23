@@ -50,7 +50,8 @@ def envia_token(token):
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(ADDR_eng)
     send(token,client)
-
+    respuesta = client.recv(2048).decode(FORMATO)
+    print(respuesta)
 """
 def elimina_dron(client):
     send()

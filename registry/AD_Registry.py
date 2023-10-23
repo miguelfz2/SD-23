@@ -18,7 +18,8 @@ def obtener_ultimo_id(cursor):
     return resultado if resultado is not None else 0
 
 def generar_token(id):
-    token = "t"  # Lógica para generar el token de acceso
+    str_id = str(id)
+    token = "token"+str_id  
     return token
 
 def registrar_dron(alias, cursor):
@@ -64,9 +65,6 @@ def handle_client(client_socket):
     print(f"Opcion {opcion}")
 
     if opcion == "1":
-        msg = "Creando dron."
-        msg = msg.encode(FORMATO)
-        client_socket.send(msg)
         token_acceso = registrar_dron(alias, cursor)
         print(f"Dron registrado con ID '{obtener_ultimo_id(cursor)}', Alias '{alias}'.")
         client_socket.send(token_acceso.encode(FORMATO))
