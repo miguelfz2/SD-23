@@ -1,0 +1,4 @@
+Minnesota 11
+Rio de Janeiro 24
+Oslo -3
+Tokio -5
