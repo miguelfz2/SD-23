@@ -1,6 +1,11 @@
 import socket
 import sys
-from kafka import KafkaConsumer
+from kafka import KafkaProducer
+import random
+import sys
+
+KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
+TOPIC = 'movimientos-dron'  # Nombre del tópico de Kafka
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -54,51 +59,55 @@ def envia_token(token):
     send(token,client)
     respuesta = client.recv(2048).decode(FORMATO)
     print(respuesta)
-    recibe_mapa()
-
-
-def recibe_mapa():
-    consumer = KafkaConsumer('topic', bootstrap_servers='localhost:9092', group_id='grupo')
-    try:
-        for message in consumer:
-            print(f"Recibido mapa: {message.value}")
-            mapa = message.value
-
-    except KeyboardInterrupt:
-        pass
-    finally:
-        consumer.close()
+    
 
 
 
-
-"""
 def elimina_dron(client):
-    send()
-"""
+    #send()
+    print("")
+
+def envia_movimiento(movimiento):
+    producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                             value_serializer=lambda v: str(v).encode('utf-8'))
+
+    # Enviar el movimiento al tópico 'movimientos-dron'
+    producer.send(TOPIC, value=movimiento)
+    producer.flush()
+
+def mueve_dron():
+    print("\n-------- MOVIMIENTO DE DRON --------")
+    movimientos = ['Norte', 'Sur', 'Este', 'Oeste']
+    movimiento = random.choice(movimientos)  # Selecciona un movimiento aleatorio
+    envia_movimiento(movimiento)
+    print(f"Movimiento '{movimiento}' enviado a Kafka.")
 
 def main():
     if len(sys.argv[1:]) < 6:
-        print('ARGUMENTOS INCORRECTOS: python3 AD_Drone.py <IP> <puerto> (Engine) <IP> <puerto> (Kafka) <IP> <puerto> (Registro)')
+        print("ARGUMENTOS INCORRECTOS: python3 cliente.py <IP> <puerto> (Engine) <IP> <puerto> (Kafka) <IP> <puerto> (Registro)")
         return -1
     else:
-        opc = menu()
-        print(opc)
-       	ipRegistro = sys.argv[5]
-        puertoRegistro =int(sys.argv[6])
-        ADDR = (ipRegistro,puertoRegistro)
+        ipRegistro = sys.argv[5]
+        puertoRegistro = int(sys.argv[6])
+        ADDR = (ipRegistro, puertoRegistro)
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.connect(ADDR)
 
-        if opc == '1':
-            crea_dron(client)
-        elif opc == '2':
-            edita_dron(client)
-        elif opc == '3':
-            elimina_dron(client)
-        else:
-            print("OPCIÓN INCORRECTA")
-        
+        while True:
+            opc = menu()
+
+            if opc == '1':
+                crea_dron(client)
+            elif opc == '2':
+                edita_dron(client)
+            elif opc == '3':
+                elimina_dron(client)
+            elif opc == '4':
+                mueve_dron()
+            else:
+                print("OPCIÓN INCORRECTA")
 
 if __name__ == "__main__":
     main()
+
+

@@ -1,11 +1,14 @@
 import socket
 import sqlite3
 import threading
-from kafka import KafkaProducer
-import time
+from kafka import KafkaConsumer
 
 # Ruta de la base de datos
-DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
+DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\AAA\SD\Practica\registry\drones.db'
+
+# Dirección de los brokers de Kafka y nombre del tópico
+KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
+TOPIC = 'movimientos-dron'
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -15,25 +18,6 @@ def verificar_registro(token):
     result = cursor.fetchone()
     conn.close()
     return result is not None
-
-def servir_mapa():
-    producer = KafkaProducer(bootstrap_servers='localhost:9092')
-    topic = 'SD'
-
-    try:
-        while True:
-            # Simula la generación de un par de posiciones
-            posiciones = [(1, 2), (3, 4), (5, 6)]
-
-            for posicion in posiciones:
-                # Envía el par de posiciones al topic 'posiciones'
-                producer.send(topic, value=str(posicion))
-                time.sleep(1)  # Pausa para simular la generación de posiciones cada 1 segundo
-
-    except KeyboardInterrupt:
-        pass
-    finally:
-        producer.close()
 
 # Función que maneja las conexiones de los clientes
 def handle_client(client_socket, addr):
@@ -48,7 +32,6 @@ def handle_client(client_socket, addr):
     if verificar_registro(token):
         # Cliente registrado, enviar mensaje de OK
         client_socket.send('OK'.encode('utf-8'))
-        servir_mapa()
     else:
         # Cliente no registrado, enviar mensaje para registrarse
         client_socket.send('Por favor, regístrese.'.encode('utf-8'))
@@ -57,16 +40,29 @@ def handle_client(client_socket, addr):
     client_socket.close()
     print(f"Cliente {addr} desconectado.")
 
+# Función para consumir mensajes de Kafka
+def consume_kafka():
+    consumer = KafkaConsumer(TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='movimientos-group')
+    print(f"Esperando movimientos del dron en el tópico '{TOPIC}'...")
+    
+    for message in consumer:
+        movimiento = message.value.decode('utf-8')
+        print(f"Nuevo movimiento del dron: {movimiento}")
+
 # Configurar el socket del servidor
 HOST = 'localhost'  # Dirección IP del servidor
 PORT = 12345         # Puerto del servidor
 
 def main():
-        # Crear un socket de servidor
+    # Crear un socket de servidor
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
     server_socket.listen(5)
     print(f"Servidor en el puerto {PORT} esperando conexiones...")
+
+    # Iniciar el consumidor de Kafka en un hilo separado
+    kafka_thread = threading.Thread(target=consume_kafka)
+    kafka_thread.start()
 
     try:
         while True:
