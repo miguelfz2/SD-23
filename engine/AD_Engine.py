@@ -98,6 +98,7 @@ def main():
             # Crear un nuevo subproceso para manejar la conexión del cliente
             client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
             client_thread.start()
+            CONEX_ACTIVAS = threading.active_count() - 1
 
             # Iniciar el consumidor de Kafka en un hilo separado
             if CONEX_ACTIVAS == MAX_CONEXIONES:
