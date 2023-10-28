@@ -11,6 +11,7 @@ DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\AAA\SD\Practica\registry\drones.d
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
 TOPIC = 'movimientos-dron'
 TOPIC_OK = #TOPIC PARA ENVIAR CONFIRMACION DE EMPEZAR ESPECTACULO(?)
+TOPIC_MAPA
 
 # Maximo numero de drones
 MAX_CONEXIONES = 2
@@ -38,6 +39,28 @@ def consulta_clima(ciudad):
     else:
         return False
 
+
+def construir_mapa(pares):
+    mapa = [[0 for _ in range(20)] for _ in range(20)]
+
+    for id_elemento, posicion in pares:
+        x = posicion["x"]
+        y = posicion["y"]
+
+        if 0 <= x < 20 and 0 <= y < 20:
+            mapa[y][x] = id_elemento
+
+    return mapa
+
+#Devuelve el mapa con el cambio de posicion dado
+def cambiar_mapa(dron, posicion, mapa):
+    if 0 <= posicion[0] < 20 and 0 <= posicion[1] < 20:
+        mapa[posicion[0]][posicion[1]] = dron
+    else:
+        print("La posición está fuera de los límites del mapa.")
+
+    return mapa
+
 # Función que maneja las conexiones de los clientes
 def handle_client(client_socket, addr):
     print(f"Cliente conectado desde {addr}")
@@ -58,6 +81,35 @@ def handle_client(client_socket, addr):
     # Cerrar la conexión con el cliente
     client_socket.close()
     print(f"Cliente {addr} desconectado.")
+
+
+def leer_json(nombre_archivo):
+    try:
+        with open(nombre_archivo, 'r') as archivo:
+            datos = json.load(archivo)
+            elementos = datos.get("elementos", [])
+
+            pares = []
+            for elemento in elementos:
+                id_elemento = elemento.get("id")
+                posicion = elemento.get("posicion")
+                if id_elemento is not None and posicion:
+                    pares.append((id_elemento, posicion))
+
+            return pares
+    except FileNotFoundError:
+        print(f"El archivo '{nombre_archivo}' no se encuentra.")
+    except json.JSONDecodeError:
+        print(f"El archivo '{nombre_archivo}' no es un JSON válido.")
+
+def envia_mapa(dron, posicion, mapa):
+    producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                             value_serializer=lambda v: str(v).encode('utf-8'))
+
+    mapa_dron = cambiar_mapa(dron, posicion, mapa)
+    producer.send(TOPIC_MAPA, value=mapa_dron)
+    producer.flush()
+
 
 def envia_OK(ciudad):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
@@ -105,6 +157,9 @@ def main():
                 ###MANDAR OK POR KAFKA
                 ciudad = input('Elige la ciudad donde se desarrollara el espectaculo: ')
                 envia_OK(ciudad)
+                json = input('Elige el archivo de la figura: ')
+                posiciones = leer_json(json)
+                mapa = construir_mapa(posiciones)
                 kafka_thread = threading.Thread(target=consume_kafka)
                 kafka_thread.start()
 
