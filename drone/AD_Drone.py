@@ -120,11 +120,8 @@ def main():
             opc = menu_inicio()
 
             if opc == '2':
-                json = input("Introduce el archivo json: ")
-                array = leer_json(json)
-                print(array)
                 token = input("Introduce tu token de dron: ")
-                #envia_token(token)
+                envia_token(token)
             elif opc == '1':
                 ipRegistro = sys.argv[5]
                 puertoRegistro = int(sys.argv[6])
