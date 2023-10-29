@@ -1,8 +1,11 @@
 import socket
 import sqlite3
 import threading
+import time
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
+TOPIC_OK = 'espectaculo'
+TOPIC_MAPA = 'mapa'
 
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\AAA\SD\Practica\registry\drones.db'
@@ -10,8 +13,7 @@ DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\AAA\SD\Practica\registry\drones.d
 # Dirección de los brokers de Kafka y nombre del tópico
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
 TOPIC = 'movimientos-dron'
-TOPIC_OK = #TOPIC PARA ENVIAR CONFIRMACION DE EMPEZAR ESPECTACULO(?)
-TOPIC_MAPA
+
 
 # Maximo numero de drones
 MAX_CONEXIONES = 2
@@ -30,7 +32,7 @@ def consulta_clima(ciudad):
     ip_clima = 'localhost'
     port_clima = 8010
     obj = socket.socket()
-    obj.connect((HOST,PORT))
+    obj.connect((ip_clima,port_clima))
     msg = ciudad.encode('utf-8')
     obj.send(msg)
     respuesta = obj.recv(4096)
@@ -65,7 +67,7 @@ def cambiar_mapa(dron, posicion, mapa):
 def handle_client(client_socket, addr):
     print(f"Cliente conectado desde {addr}")
     
-    # Recibir datos del cliente (token y alias)
+    # Recibir datos del cliente 
     data = client_socket.recv(1024).decode('utf-8')
     token = data
     print(token)
@@ -83,9 +85,9 @@ def handle_client(client_socket, addr):
     print(f"Cliente {addr} desconectado.")
 
 
-def leer_json(nombre_archivo):
+def leer_json(json):
     try:
-        with open(nombre_archivo, 'r') as archivo:
+        with open(json, 'r') as archivo:
             datos = json.load(archivo)
             elementos = datos.get("elementos", [])
 
@@ -98,9 +100,9 @@ def leer_json(nombre_archivo):
 
             return pares
     except FileNotFoundError:
-        print(f"El archivo '{nombre_archivo}' no se encuentra.")
+        print(f"El archivo '{json}' no se encuentra.")
     except json.JSONDecodeError:
-        print(f"El archivo '{nombre_archivo}' no es un JSON válido.")
+        print(f"El archivo '{json}' no es un JSON válido.")
 
 def envia_mapa(dron, posicion, mapa):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
@@ -114,13 +116,15 @@ def envia_mapa(dron, posicion, mapa):
 def envia_OK(ciudad):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                              value_serializer=lambda v: str(v).encode('utf-8'))
-
-    # Enviar la orden de empezar al tópico 'TOPIC_OK'
-    if consulta_clima(ciudad) == True:
-        producer.send(TOPIC_OK, value='OK')
-    else:
-        producer.send(TOPIC_OK, value='NOOK')
-    producer.flush()
+    val = ''
+    while True:
+        if consulta_clima(ciudad) == True:
+            val = 'OK'
+        else:
+            val = 'NOOO'
+        producer.send(TOPIC_OK, value=val)
+        producer.flush()
+        time.sleep(5)
 
 # Función para consumir mensajes de Kafka
 def consume_kafka():
@@ -141,28 +145,23 @@ def main():
     server_socket.bind((HOST, PORT))
     server_socket.listen(5)
     print(f"Servidor en el puerto {PORT} esperando conexiones...")
+    ciudad = 'Minnesota'
+    # Iniciar el hilo para enviar mensajes "OK" periódicamente
+    ok_message_thread = threading.Thread(target=envia_OK, args=(ciudad,))
+    ok_message_thread.start()
+
+    # Iniciar el hilo para consumir mensajes de movimientos del dron
+    kafka_thread = threading.Thread(target=consume_kafka)
+    kafka_thread.start()
 
     try:
         while True:
             # Esperar a que un cliente se conecte
             client_socket, addr = server_socket.accept()
-            
+
             # Crear un nuevo subproceso para manejar la conexión del cliente
             client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
             client_thread.start()
-            CONEX_ACTIVAS = threading.active_count() - 1
-
-            # Iniciar el consumidor de Kafka en un hilo separado
-            if CONEX_ACTIVAS == MAX_CONEXIONES:
-                ###MANDAR OK POR KAFKA
-                ciudad = input('Elige la ciudad donde se desarrollara el espectaculo: ')
-                envia_OK(ciudad)
-                json = input('Elige el archivo de la figura: ')
-                posiciones = leer_json(json)
-                mapa = construir_mapa(posiciones)
-                kafka_thread = threading.Thread(target=consume_kafka)
-                kafka_thread.start()
-
 
     except KeyboardInterrupt:
         print("Servidor detenido.")
@@ -172,3 +171,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

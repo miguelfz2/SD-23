@@ -35,7 +35,7 @@ while True:
     print ("Recibido: ", ciudad)
     resultado = buscar_bd(ciudad)
     if resultado != "":
-        conexion.send(resultado.encode('utf-8')
+        conexion.send(resultado.encode('utf-8'))
     else:
         conexion.send("CIUDAD NO ENCONTRADA".encode('utf-8'))
 
