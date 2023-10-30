@@ -5,11 +5,13 @@ from kafka import KafkaConsumer
 import random
 import sys
 import time
+import json
 
 KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':9092'  # La dirección de los brokers de Kafka
 TOPIC = 'movimientos-dron'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espectaculo'
 TOPIC_PARES = 'pares'
+TOPIC_MAPA = 'mapa'
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -109,6 +111,25 @@ def consume_pares():
     for message in consumer:
         pares = message.value.decode('utf-8')
         print(pares)
+        break
+
+def imprimir_mapa(mapa):
+    for fila in mapa:
+        for casilla in fila:
+            if casilla == 0:
+                print(' ', end=' ')  
+            else:
+                print(casilla, end=' ')  
+        print()  
+
+def consume_mapa():
+    consumer = KafkaConsumer(TOPIC_MAPA, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='mapa-group')
+    print("CONSUMIENDO MAPA")
+    for message in consumer:
+        mapa = message.value.decode('utf-8')
+        mapa = json.loads(mapa)
+        #imprimir_mapa(mapa)
+        break
 
 def envia_movimiento(movimiento):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
@@ -124,11 +145,12 @@ def mueve_dron():
         comienzo = consume_comienzo()
     consume_pares()
     print("\n-------- MOVIMIENTO DE DRON --------")
-    movimientos = ['Norte', 'Sur', 'Este', 'Oeste']
+    movimientos = ['N', 'S', 'E', 'O']
     while True:
         movimiento = random.choice(movimientos)  # Selecciona un movimiento aleatorio
         envia_movimiento(movimiento)
         print(f"Movimiento '{movimiento}' enviado a Kafka.")
+        consume_mapa()
         time.sleep(3)
 
 def main():
