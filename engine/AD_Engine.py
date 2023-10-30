@@ -42,17 +42,17 @@ def consulta_clima(ciudad):
     else:
         return False
 
+def imprimir_mapa(mapa):
+    for fila in mapa:
+        for casilla in fila:
+            if casilla == 0:
+                print(' ', end=' ')  
+            else:
+                print(casilla, end=' ')  
+        print()  
 
-def construir_mapa(pares):
+def construir_mapa():
     mapa = [[0 for _ in range(20)] for _ in range(20)]
-
-    for id_elemento, posicion in pares:
-        x = posicion["x"]
-        y = posicion["y"]
-
-        if 0 <= x < 20 and 0 <= y < 20:
-            mapa[y][x] = id_elemento
-
     return mapa
 
 #Devuelve el mapa con el cambio de posicion dado
@@ -136,10 +136,14 @@ def consume_kafka():
         print(f"Nuevo movimiento del dron: {movimiento}")
 
 # Configurar el socket del servidor
-HOST = '192.168.108.229'  # Dirección IP del servidor
+HOST = 'localhost'  # Dirección IP del servidor
 PORT = 12346         # Puerto del servidor PARAMETRIZAR
 
 def main():
+    mapa = construir_mapa()
+    pos = (2,3)
+    cambiar_mapa(1,pos,mapa)
+    imprimir_mapa(mapa)
     # Crear un socket de servidor
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
