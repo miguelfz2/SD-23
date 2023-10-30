@@ -2,21 +2,22 @@ import socket
 import sqlite3
 import threading
 import time
+import json
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
 TOPIC_OK = 'espectaculo'
 TOPIC_MAPA = 'mapa'
+TOPIC = 'movimientos-dron'
+TOPIC_PARES = 'pares'
 
 # Ruta de la base de datos
-DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\AAA\SD\Practica\registry\drones.db'
+DB_FILE = r'/home/mfz/Escritorio/SD/SD-23/registry/drones.db'
 
 # Dirección de los brokers de Kafka y nombre del tópico
-KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
-TOPIC = 'movimientos-dron'
-
+KAFKA_BOOTSTRAP_SERVERS = '192.168.108.185:9092' ##PARAMETRIZAR
 
 # Maximo numero de drones
-MAX_CONEXIONES = 2
+MAX_CONEXIONES = 2 ##PARAMETRIZAR
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -85,9 +86,9 @@ def handle_client(client_socket, addr):
     print(f"Cliente {addr} desconectado.")
 
 
-def leer_json(json):
+def leer_json(ruta):
     try:
-        with open(json, 'r') as archivo:
+        with open(ruta, 'r') as archivo:
             datos = json.load(archivo)
             elementos = datos.get("elementos", [])
 
@@ -101,15 +102,14 @@ def leer_json(json):
             return pares
     except FileNotFoundError:
         print(f"El archivo '{json}' no se encuentra.")
-    except json.JSONDecodeError:
-        print(f"El archivo '{json}' no es un JSON válido.")
 
-def envia_mapa(dron, posicion, mapa):
+def envia_pares(pares):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                              value_serializer=lambda v: str(v).encode('utf-8'))
 
-    mapa_dron = cambiar_mapa(dron, posicion, mapa)
-    producer.send(TOPIC_MAPA, value=mapa_dron)
+    #mapa_dron = cambiar_mapa(dron, posicion, mapa)
+    print("ENVIANDO PARES: "+str(pares))
+    producer.send(TOPIC_PARES, value=pares)
     producer.flush()
 
 
@@ -136,19 +136,17 @@ def consume_kafka():
         print(f"Nuevo movimiento del dron: {movimiento}")
 
 # Configurar el socket del servidor
-HOST = 'localhost'  # Dirección IP del servidor
-PORT = 12345         # Puerto del servidor
+HOST = '192.168.108.229'  # Dirección IP del servidor
+PORT = 12346         # Puerto del servidor PARAMETRIZAR
 
 def main():
     # Crear un socket de servidor
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
     server_socket.listen(5)
+    CONEX_ACTIVAS = 0
     print(f"Servidor en el puerto {PORT} esperando conexiones...")
     ciudad = 'Minnesota'
-    # Iniciar el hilo para enviar mensajes "OK" periódicamente
-    ok_message_thread = threading.Thread(target=envia_OK, args=(ciudad,))
-    ok_message_thread.start()
 
     # Iniciar el hilo para consumir mensajes de movimientos del dron
     kafka_thread = threading.Thread(target=consume_kafka)
@@ -162,6 +160,18 @@ def main():
             # Crear un nuevo subproceso para manejar la conexión del cliente
             client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
             client_thread.start()
+            # Iniciar el hilo para enviar mensajes "OK" periódicamente
+            CONEX_ACTIVAS = CONEX_ACTIVAS + 1
+            print("CONEX_ACTIVAS: " + str(CONEX_ACTIVAS))
+            if MAX_CONEXIONES == CONEX_ACTIVAS:
+                print("Entramos en if")
+                ok_message_thread = threading.Thread(target=envia_OK, args=(ciudad,))
+                ok_message_thread.start()
+                #json = input("Introduce el archivo de espectaculo: ")
+                pares = leer_json("./json/figura_simple.json")
+                print("json leido")
+                pares_thread = threading.Thread(target=envia_pares, args=(pares,))
+                pares_thread.start()
 
     except KeyboardInterrupt:
         print("Servidor detenido.")

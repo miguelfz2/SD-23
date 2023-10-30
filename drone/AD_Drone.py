@@ -4,7 +4,6 @@ from kafka import KafkaProducer
 from kafka import KafkaConsumer
 import random
 import sys
-import json
 import time
 
 KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':9092'  # La dirección de los brokers de Kafka
