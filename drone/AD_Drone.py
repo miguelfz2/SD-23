@@ -9,6 +9,7 @@ import time
 KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':9092'  # La dirección de los brokers de Kafka
 TOPIC = 'movimientos-dron'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espectaculo'
+TOPIC_PARES = 'pares'
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -51,6 +52,7 @@ def crea_dron(client):
     send("1."+alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
     print("Tu token es "+respuesta)
+    return respuesta
 
 
 def edita_dron(client):
@@ -63,6 +65,7 @@ def edita_dron(client):
     send("2."+alias+"."+nuevo_alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
     print("Tu token es "+respuesta)
+    return respuesta
 
 def elimina_dron(client):
     print("---------------------------------")
@@ -100,6 +103,13 @@ def consume_comienzo():
         else:
             return False
 
+def consume_pares():
+    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='pares-group')
+    print(f"Esperando posiciones finales del dorn")
+    for message in consumer:
+        pares = message.value.decode('utf-8')
+        print(pares)
+
 def envia_movimiento(movimiento):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                              value_serializer=lambda v: str(v).encode('utf-8'))
@@ -112,6 +122,7 @@ def mueve_dron():
     comienzo = False
     while comienzo == False:
         comienzo = consume_comienzo()
+    consume_pares()
     print("\n-------- MOVIMIENTO DE DRON --------")
     movimientos = ['Norte', 'Sur', 'Este', 'Oeste']
     while True:
@@ -125,13 +136,17 @@ def main():
         print("ARGUMENTOS INCORRECTOS: python3 AD_Drone.py <IP> <puerto> (Engine) <IP> <puerto> (Kafka) <IP> <puerto> (Registro)")
         return -1
     else:
+        id = 0
+        token = ''
         conectado = False
         while conectado == False:
             opc = menu_inicio()
 
             if opc == '2':
-                token = input("Introduce tu token de dron: ")
-                conectado = envia_token(token)
+                if token != '':
+                    conectado = envia_token(token)
+                else:
+                    print("Por favor, registrese!")
             elif opc == '1':
                 ipRegistro = sys.argv[5]
                 puertoRegistro = int(sys.argv[6])
@@ -140,11 +155,11 @@ def main():
                 client.connect(ADDR)
                 opc = menu()
                 if opc == '2':
-                    edita_dron(client)
+                    token = edita_dron(client)
                 elif opc == '3':
                     elimina_dron(client)
                 elif opc == '1':
-                    crea_dron(client)
+                    token = crea_dron(client)
                 else:
                     print("OPCIÓN INCORRECTA")
             elif opc == '3':
@@ -155,5 +170,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
