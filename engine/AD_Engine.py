@@ -224,7 +224,6 @@ def main():
             CONEX_ACTIVAS = CONEX_ACTIVAS + 1
             print("CONEX_ACTIVAS: " + str(CONEX_ACTIVAS))
             if MAX_CONEXIONES == CONEX_ACTIVAS:
-                print("Entramos en if")
                 ok_message_thread = threading.Thread(target=envia_OK, args=(ciudad,))
                 ok_message_thread.start()
                 #json = input("Introduce el archivo de espectaculo: ")

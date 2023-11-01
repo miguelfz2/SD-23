@@ -53,7 +53,7 @@ def crea_dron(client):
     #ENVIAMOS EL ALIAS AL SOCKET
     send("1."+alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
-    print("Tu token es "+respuesta)
+    print("Tu token es "+respuesta.split(".")[1])
     return respuesta
 
 
@@ -66,8 +66,6 @@ def edita_dron(client):
     #ENVIAMOS EL ALIAS AL SOCKET
     send("2."+alias+"."+nuevo_alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
-    print("Tu token es "+respuesta)
-    return respuesta
 
 def elimina_dron(client):
     print("---------------------------------")
@@ -158,7 +156,7 @@ def main():
         print("ARGUMENTOS INCORRECTOS: python3 AD_Drone.py <IP> <puerto> (Engine) <IP> <puerto> (Kafka) <IP> <puerto> (Registro)")
         return -1
     else:
-        id = 0
+        id_dron = 0
         token = ''
         conectado = False
         while conectado == False:
@@ -177,11 +175,14 @@ def main():
                 client.connect(ADDR)
                 opc = menu()
                 if opc == '2':
-                    token = edita_dron(client)
+                    edita_dron(client)
                 elif opc == '3':
                     elimina_dron(client)
                 elif opc == '1':
-                    token = crea_dron(client)
+                    respuesta = crea_dron(client)
+                    id_dron = respuesta.split(".")[0]
+                    token = respuesta.split(".")[1]
+                    print("Dron creado con id: "+id_dron+" y token: "+token)
                 else:
                     print("OPCIÓN INCORRECTA")
             elif opc == '3':

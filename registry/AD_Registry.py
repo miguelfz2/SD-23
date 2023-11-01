@@ -67,7 +67,8 @@ def handle_client(client_socket):
     if opcion == "1":
         token_acceso = registrar_dron(alias, cursor)
         print(f"Dron registrado con ID '{obtener_ultimo_id(cursor)}', Alias '{alias}'.")
-        client_socket.send(token_acceso.encode(FORMATO))
+        respuesta = str(obtener_ultimo_id(cursor)) + "." + token_acceso
+        client_socket.send(respuesta.encode(FORMATO))
     elif opcion == "2":
         msg = editar_alias(alias, nuevo_alias, cursor)
         client_socket.send(msg.encode(FORMATO))
