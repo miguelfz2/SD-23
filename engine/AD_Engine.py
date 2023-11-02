@@ -163,8 +163,10 @@ def consume_kafka(mapa):
     }
     pos = (0, 0)
     for message in consumer:
-        pos = leer_id_mapa(1, mapa)
-        movimiento = message.value.decode('utf-8')
+        respuesta = message.value.decode('utf-8')
+        id = respuesta[0]
+        movimiento = respuesta[1]
+        pos = leer_id_mapa(id, mapa)
         print(f"Nuevo movimiento del dron: {movimiento}")
 
         # Verificar que el movimiento sea válido

@@ -7,7 +7,7 @@ import sys
 import time
 import json
 
-KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':9092'  # La dirección de los brokers de Kafka
+KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
 TOPIC = 'movimientos-dron'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espectaculo'
 TOPIC_PARES = 'pares'
@@ -76,7 +76,7 @@ def elimina_dron(client):
     send("3."+alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
 
-def envia_token(token):
+def envia_token(id,token):
     ipEngine = sys.argv[1]
     puertoEngine = int(sys.argv[2])
     ADDR_eng = (ipEngine,puertoEngine)
@@ -86,7 +86,7 @@ def envia_token(token):
     respuesta = client.recv(2048).decode(FORMATO)
     print(respuesta)
     if respuesta == "OK":
-        mueve_dron()
+        mueve_dron(id)
         return True
     else:
         return False
@@ -137,7 +137,7 @@ def envia_movimiento(movimiento):
     producer.send(TOPIC, value=movimiento)
     producer.flush()
 
-def mueve_dron():
+def mueve_dron(id):
     comienzo = False
     while comienzo == False:
         comienzo = consume_comienzo()
@@ -146,7 +146,8 @@ def mueve_dron():
     movimientos = ['N', 'S', 'E', 'O']
     while True:
         movimiento = random.choice(movimientos)  # Selecciona un movimiento aleatorio
-        envia_movimiento(movimiento)
+        mov = (id, movimiento)
+        envia_movimiento(mov)
         print(f"Movimiento '{movimiento}' enviado a Kafka.")
         consume_mapa()
         time.sleep(3)
@@ -164,7 +165,7 @@ def main():
 
             if opc == '2':
                 if token != '':
-                    conectado = envia_token(token)
+                    conectado = envia_token(id_dron,token)
                 else:
                     print("Por favor, registrese!")
             elif opc == '1':
