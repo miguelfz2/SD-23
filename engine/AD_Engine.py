@@ -1,8 +1,10 @@
+import re
 import socket
 import sqlite3
 import threading
 import time
 import json
+import sys
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
 TOPIC_OK = 'espectaculo'
@@ -17,7 +19,7 @@ DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092' ##PARAMETRIZAR
 
 # Maximo numero de drones
-MAX_CONEXIONES = 2 ##PARAMETRIZAR
+MAX_CONEXIONES = 10 ##PARAMETRIZAR
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -38,7 +40,7 @@ def consulta_clima(ciudad):
     obj.send(msg)
     respuesta = obj.recv(4096)
     if int(respuesta.decode('utf-8')) > 0:
-        return True
+         return True
     else:
         return False
 
@@ -71,15 +73,17 @@ def limpiar_mapa(mapa):
     nuevo_mapa = [[0 for _ in range(columnas)] for _ in range(filas)]
     return nuevo_mapa
 
-def leer_id_mapa(id, mapa):
+def leer_id_mapa(id_dron, mapa):
     filas = len(mapa)
     for fila in range(filas):
         columnas = len(mapa[fila])
         for columna in range(columnas):
-            if mapa[fila][columna] == id:
+            if mapa[fila][columna] == id_dron:
                 return fila, columna
     # Devuelve None si el ID no se encuentra en el mapa
-    return None
+    fila = 1
+    columna = 1
+    return fila, columna
 
 # Función que maneja las conexiones de los clientes
 def handle_client(client_socket, addr):
@@ -144,7 +148,7 @@ def envia_OK(ciudad):
         if consulta_clima(ciudad) == True:
             val = 'OK'
         else:
-            val = 'NOOO'
+            val = 'Hace mucho frio.'
         producer.send(TOPIC_OK, value=val)
         producer.flush()
         time.sleep(5)
@@ -164,9 +168,11 @@ def consume_kafka(mapa):
     pos = (0, 0)
     for message in consumer:
         respuesta = message.value.decode('utf-8')
-        id = respuesta[0]
-        movimiento = respuesta[1]
-        pos = leer_id_mapa(id, mapa)
+        res = respuesta.split(",")
+        id_dron = res[0]
+        movimiento = res[1]
+        print("El id es: "+id_dron)
+        pos = leer_id_mapa(id_dron, mapa)
         print(f"Nuevo movimiento del dron: {movimiento}")
 
         # Verificar que el movimiento sea válido
@@ -182,15 +188,21 @@ def consume_kafka(mapa):
             if 0 <= nueva_fila < 20 and 0 <= nueva_columna < 20:
                 mapa = cambiar_mapa('', pos, mapa)
                 pos = (nueva_fila, nueva_columna)
-                mapa = cambiar_mapa(1, pos, mapa)
+                mapa = cambiar_mapa(id_dron, pos, mapa)
                 print("Posicion:" + str(pos))
-                imprimir_mapa(mapa)
-                envia_mapa(mapa)
+                return mapa
             else:
                 print("Movimiento fuera de los límites del mapa.")
         else:
             print("Movimiento no válido.")
 
+
+def menu():
+    print()
+    print("1. Iniciar espectaculo")
+    print("2. Salir")
+    print()
+    return input('Elige una opción: ')
 
 # Configurar el socket del servidor
 HOST = 'localhost'  # Dirección IP del servidor
@@ -199,9 +211,10 @@ PORT = 12345         # Puerto del servidor PARAMETRIZAR
 def main():
     mapa = construir_mapa()
     limpiar_mapa(mapa)
-    pos = (2,3)
-    cambiar_mapa(1,pos,mapa)
-    imprimir_mapa(mapa)
+    pares = leer_json("./json/figura_simple.json")
+    drones_json = len(pares)
+    print("json leido")
+    print(drones_json)
     # Crear un socket de servidor
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
@@ -210,9 +223,6 @@ def main():
     print(f"Servidor en el puerto {PORT} esperando conexiones...")
     ciudad = 'Minnesota'
 
-    # Iniciar el hilo para consumir mensajes de movimientos del dron
-    kafka_thread = threading.Thread(target=consume_kafka, args=(mapa,))
-    kafka_thread.start()
 
     try:
         while True:
@@ -222,19 +232,31 @@ def main():
             # Crear un nuevo subproceso para manejar la conexión del cliente
             client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
             client_thread.start()
+            #Hilo para el servidor de clima
+            clima_thread = threading.Thread(target=consulta_clima, args=(ciudad,))
+            clima_thread.start()
+
             # Iniciar el hilo para enviar mensajes "OK" periódicamente
             CONEX_ACTIVAS = CONEX_ACTIVAS + 1
             print("CONEX_ACTIVAS: " + str(CONEX_ACTIVAS))
-            if MAX_CONEXIONES == CONEX_ACTIVAS:
-                ok_message_thread = threading.Thread(target=envia_OK, args=(ciudad,))
-                ok_message_thread.start()
-                #json = input("Introduce el archivo de espectaculo: ")
-                pares = leer_json("./json/figura_simple.json")
-                print("json leido")
-                pares_thread = threading.Thread(target=envia_pares, args=(pares,))
-                pares_thread.start()
-                enviar_mapa_thread = threading.Thread(target=envia_mapa, args=(mapa,))
-                enviar_mapa_thread.start()
+            if MAX_CONEXIONES == CONEX_ACTIVAS or CONEX_ACTIVAS == drones_json:
+                time.sleep(1)
+                opc = '0'
+                while opc != '1' or opc != '2':
+                    opc = menu()
+                    if opc == '1':
+                        ok_thread = threading.Thread(target=envia_OK, args=(ciudad,))
+                        ok_thread.start()  
+                        clima = consulta_clima(ciudad)  
+                        envia_pares(pares)
+                        while clima == True:            
+                            mapa = consume_kafka(mapa)
+                            imprimir_mapa(mapa)
+                            envia_mapa(mapa)
+                    elif opc == '2':
+                        sys.exit()
+                    else:
+                        print("Opcion incorrecta")
 
     except KeyboardInterrupt:
         print("Servidor detenido.")

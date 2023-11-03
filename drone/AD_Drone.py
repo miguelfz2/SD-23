@@ -76,7 +76,7 @@ def elimina_dron(client):
     send("3."+alias,client)
     respuesta = client.recv(2048).decode(FORMATO)
 
-def envia_token(id,token):
+def envia_token(id_dron,token):
     ipEngine = sys.argv[1]
     puertoEngine = int(sys.argv[2])
     ADDR_eng = (ipEngine,puertoEngine)
@@ -86,13 +86,13 @@ def envia_token(id,token):
     respuesta = client.recv(2048).decode(FORMATO)
     print(respuesta)
     if respuesta == "OK":
-        mueve_dron(id)
+        mueve_dron(id_dron)
         return True
     else:
         return False
 
-def consume_comienzo():
-    consumer = KafkaConsumer(TOPIC_OK, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='espectaculo-group')
+def consume_comienzo(id_dron):
+    consumer = KafkaConsumer(TOPIC_OK, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='espectaculo-group-'+id_dron)
     print(f"Esperando confirmacion de inicio del espectaculo...")
 
     for message in consumer:
@@ -103,9 +103,9 @@ def consume_comienzo():
         else:
             return False
 
-def consume_pares():
-    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='pares-group')
-    print(f"Esperando posiciones finales del dorn")
+def consume_pares(id_dron):
+    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='pares-group-'+id_dron)
+    print(f"Esperando posiciones finales del dron")
     for message in consumer:
         pares = message.value.decode('utf-8')
         print(pares)
@@ -120,8 +120,8 @@ def imprimir_mapa(mapa):
                 print(casilla, end=' ')  
         print()  
 
-def consume_mapa():
-    consumer = KafkaConsumer(TOPIC_MAPA, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='mapa-group')
+def consume_mapa(id_dron):
+    consumer = KafkaConsumer(TOPIC_MAPA, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='mapa-group-'+id_dron)
     print("CONSUMIENDO MAPA")
     for message in consumer:
         mapa = message.value.decode('utf-8')
@@ -137,19 +137,19 @@ def envia_movimiento(movimiento):
     producer.send(TOPIC, value=movimiento)
     producer.flush()
 
-def mueve_dron(id):
+def mueve_dron(id_dron):
     comienzo = False
     while comienzo == False:
-        comienzo = consume_comienzo()
-    consume_pares()
+        comienzo = consume_comienzo(id_dron)
+    consume_pares(id_dron)
     print("\n-------- MOVIMIENTO DE DRON --------")
     movimientos = ['N', 'S', 'E', 'O']
     while True:
         movimiento = random.choice(movimientos)  # Selecciona un movimiento aleatorio
-        mov = (id, movimiento)
+        mov = "" + id_dron + "," + movimiento
         envia_movimiento(mov)
         print(f"Movimiento '{movimiento}' enviado a Kafka.")
-        consume_mapa()
+        consume_mapa(id_dron)
         time.sleep(3)
 
 def main():
