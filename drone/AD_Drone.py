@@ -134,6 +134,7 @@ def envia_movimiento(movimiento):
                              value_serializer=lambda v: str(v).encode('utf-8'))
 
     # Enviar el movimiento al tópico 'movimientos-dron'
+    print(movimiento)
     producer.send(TOPIC, value=movimiento)
     producer.flush()
 
@@ -146,7 +147,8 @@ def mueve_dron(id):
     movimientos = ['N', 'S', 'E', 'O']
     while True:
         movimiento = random.choice(movimientos)  # Selecciona un movimiento aleatorio
-        mov = (id, movimiento)
+        id = str(id)
+        mov = "" + id + "," + movimiento
         envia_movimiento(mov)
         print(f"Movimiento '{movimiento}' enviado a Kafka.")
         consume_mapa()

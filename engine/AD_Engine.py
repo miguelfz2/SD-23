@@ -79,7 +79,9 @@ def leer_id_mapa(id, mapa):
             if mapa[fila][columna] == id:
                 return fila, columna
     # Devuelve None si el ID no se encuentra en el mapa
-    return None
+    fila = 1
+    columna = 1
+    return fila, columna
 
 # Función que maneja las conexiones de los clientes
 def handle_client(client_socket, addr):
@@ -164,8 +166,12 @@ def consume_kafka(mapa):
     pos = (0, 0)
     for message in consumer:
         respuesta = message.value.decode('utf-8')
-        id = respuesta[0]
-        movimiento = respuesta[1]
+        res = respuesta.split(",")
+        print (res)
+        id = res[0]
+        movimiento = res[1]
+        print("El id es: "+id)
+        print("El movimiento es: "+movimiento)
         pos = leer_id_mapa(id, mapa)
         print(f"Nuevo movimiento del dron: {movimiento}")
 
@@ -225,7 +231,7 @@ def main():
             # Iniciar el hilo para enviar mensajes "OK" periódicamente
             CONEX_ACTIVAS = CONEX_ACTIVAS + 1
             print("CONEX_ACTIVAS: " + str(CONEX_ACTIVAS))
-            if MAX_CONEXIONES == CONEX_ACTIVAS:
+            if MAX_CONEXIONES >= CONEX_ACTIVAS:
                 ok_message_thread = threading.Thread(target=envia_OK, args=(ciudad,))
                 ok_message_thread.start()
                 #json = input("Introduce el archivo de espectaculo: ")
