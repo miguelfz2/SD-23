@@ -9,8 +9,8 @@ import json
 import ast
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
-TOPIC = 'movimiento'  # Nombre del tópico de Kafka
-TOPIC_OK = 'espectaculo'
+TOPIC = 'movimient'  # Nombre del tópico de Kafka
+TOPIC_OK = 'espectacul'
 TOPIC_PARES = 'par'
 TOPIC_MAPA = 'mapa'
 
@@ -94,7 +94,7 @@ def envia_token(id_dron,token):
 
 def consume_comienzo(id_dron):
     consumer = KafkaConsumer(TOPIC_OK, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='espectaculo-group-'+id_dron)
-    print(f"Esperando confirmacion de inicio del espectaculo...")
+    print(f"Esperando confirmacion de inicio del espectaculo '{TOPIC_OK}'...")
     ok=""
     for message in consumer:
         ok = message.value.decode('utf-8')
@@ -128,8 +128,14 @@ def calcula_path(id_dron, pares):
     lista_pares = ast.literal_eval(pares)
 
     for pos in lista_pares:
-        if pos[0] == id_dron:
-            final = (pos[1]["x"],pos[1]["y"])
+        if str(pos[0]) == str(id_dron):
+            final = (pos[1]["x"], pos[1]["y"])
+            break  # Salir del bucle una vez que se haya encontrado el dron
+
+    if not final:
+        # Manejar el caso en el que el dron no se encuentra en la lista de pares
+        print(f"Dron con id {id_dron} no encontrado en la lista de pares.")
+        return []
 
     x, y = 1, 1
     camino = []
@@ -184,19 +190,22 @@ def envia_movimiento(movimiento):
 
 def mueve_dron(id_dron):
     comienzo = ""
-    #while comienzo != "OK":
-    #    comienzo = consume_comienzo(id_dron)
+    while comienzo != "OK":
+        comienzo = consume_comienzo(id_dron)
     pares = consume_pares(id_dron)
     print("\n-------- MOVIMIENTO DE DRON --------")
     path = calcula_path(id_dron, pares)
-    while True:
-        move = path.pop(0)  # Selecciona el siguiente movimiento de la lista calculada
-        id_dron = str(id_dron)
-        mov = "" + id_dron + "," + move
-        envia_movimiento(mov)
-        print(f"Movimiento '{move}' enviado a Kafka.")
-        consume_mapa(id_dron)
-        time.sleep(3)
+    if not path:
+        print("El dron ya esta en la posicion final")
+    else:
+        while True:
+            move = path.pop(0)  # Selecciona el siguiente movimiento de la lista calculada
+            id_dron = str(id_dron)
+            mov = "" + id_dron + "," + move
+            envia_movimiento(mov)
+            print(f"Movimiento '{move}' enviado a Kafka.")
+            consume_mapa(id_dron)
+            time.sleep(3)
 
 def main():
     if len(sys.argv[1:]) < 6:

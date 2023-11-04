@@ -6,11 +6,30 @@ import sys
 
 FORMATO = 'utf-8'
 
+
+
 def obtener_conexion():
     return sqlite3.connect('drones.db')  # Base de datos
 
 def obtener_cursor(conexion):
     return conexion.cursor()  # Cursor para instrucciones en DB
+
+def borrar_db():
+    conexion = sqlite3.connect("drones.db")
+
+    # Crear un cursor para ejecutar comandos SQL
+    cursor = conexion.cursor()
+
+    # Comando SQL para borrar el contenido de la tabla dron
+    sql_query = "DELETE FROM dron;"
+
+    # Ejecutar el comando SQL
+    cursor.execute(sql_query)
+
+    # Confirmar los cambios y cerrar la conexión
+    conexion.commit()
+    conexion.close()
+
 
 def obtener_ultimo_id(cursor):
     cursor.execute('SELECT MAX(id) FROM dron')
@@ -63,7 +82,7 @@ def handle_client(client_socket):
 
     print(f"Conexión establecida con el dron {alias}")
     print(f"Opcion {opcion}")
-
+    
     if opcion == "1":
         token_acceso = registrar_dron(alias, cursor)
         print(f"Dron registrado con ID '{obtener_ultimo_id(cursor)}', Alias '{alias}'.")
@@ -99,6 +118,7 @@ server_host = 'localhost'
 server_socket.bind((server_host, server_port))
 server_socket.listen(5)
 
+borrar_db()
 print(f"Esperando solicitudes de registro en {server_host}:{server_port}...")
 
 while True:

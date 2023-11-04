@@ -7,9 +7,9 @@ import json
 import sys
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
-TOPIC_OK = 'espectaculo'
+TOPIC_OK = 'espectacul'
 TOPIC_MAPA = 'mapa'
-TOPIC = 'movimientos'
+TOPIC = 'movimient'
 TOPIC_PARES = 'par'
 
 # Ruta de la base de datos
@@ -144,13 +144,15 @@ def envia_OK(ciudad):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                              value_serializer=lambda v: str(v).encode('utf-8'))
     val = ''
-    while True:
-        if consulta_clima(ciudad) == True:
-            val = 'OK'
-        else:
-            val = 'Hace mucho frio.'
+    if consulta_clima(ciudad) == True:
+        val = 'OK'
         producer.send(TOPIC_OK, value=val)
         producer.flush()
+    while True:
+        if consulta_clima(ciudad) == False:
+            val = 'Hace mucho frio.'
+            producer.send(TOPIC_OK, value=val)
+            producer.flush()
         time.sleep(5)
 
 # Función para consumir mensajes de Kafka
@@ -263,6 +265,7 @@ def main():
                         print("Opcion incorrecta")
 
     except KeyboardInterrupt:
+        sys.exit()
         print("Servidor detenido.")
     finally:
         # Cerrar el socket del servidor al finalizar

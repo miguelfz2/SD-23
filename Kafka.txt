@@ -3,3 +3,5 @@
 .\bin\windows\kafka-server-start.bat .\config\server.properties
 
 .\bin\windows\kafka-topics.bat --create --topic SD --bootstrap-server localhost:9092
+
+.\bin\windows\kafka-console-consumer.bat --bootstrap-server localhost:9092 --from-beginning --topic movimiento
