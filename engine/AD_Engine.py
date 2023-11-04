@@ -9,8 +9,8 @@ from kafka import KafkaConsumer
 from kafka import KafkaProducer
 TOPIC_OK = 'espectaculo'
 TOPIC_MAPA = 'mapa'
-TOPIC = 'movimientos-dron'
-TOPIC_PARES = 'pares'
+TOPIC = 'movimientos'
+TOPIC_PARES = 'par'
 
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
@@ -162,7 +162,7 @@ def consume_kafka(mapa):
     movimientos = {
         'E': (0, 1),  # Mover hacia el este (aumentar la columna)
         'SE': (1, 1), # Mover hacia el sudeste (aumenta fila y columna)
-        'NE': (-1, 1) # Mover hacia el noreste (disminuir fila aumentar columna)
+        'NE': (-1, 1), # Mover hacia el noreste (disminuir fila aumentar columna)
         'O': (0, -1),  # Mover hacia el oeste (disminuir la columna)
         'NO': (-1, -1), #Mover hacia el noroeste (disiminuir fila y columna)
         'SO': (1, -1), #Mover hacia el sudoeste (aumentar fila disminuir columna)

@@ -9,9 +9,9 @@ import json
 import ast
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
-TOPIC = 'movimientos-dron'  # Nombre del tópico de Kafka
+TOPIC = 'movimiento'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espectaculo'
-TOPIC_PARES = 'pares'
+TOPIC_PARES = 'par'
 TOPIC_MAPA = 'mapa'
 
 FORMATO = 'utf-8'
@@ -95,21 +95,22 @@ def envia_token(id_dron,token):
 def consume_comienzo(id_dron):
     consumer = KafkaConsumer(TOPIC_OK, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='espectaculo-group-'+id_dron)
     print(f"Esperando confirmacion de inicio del espectaculo...")
-
+    ok=""
     for message in consumer:
         ok = message.value.decode('utf-8')
         print(ok)
-        if ok == 'OK':
-            return True
-        else:
-            return False
+        break
+    return ok
 
 def consume_pares(id_dron):
+    # Configurar el consumidor de Kafka
     consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='pares-group-'+id_dron)
-    print(f"Esperando posiciones finales del dron")
+    print(f"Esperando posiciones finales del dron en el tópico '{TOPIC_PARES}'...")
+    pares = ""
+    # Consumir mensajes del tópico
     for message in consumer:
         pares = message.value.decode('utf-8')
-        print(pares)
+        print(f"Pares recibidos: {pares}")
         break
     return pares
 
@@ -182,9 +183,9 @@ def envia_movimiento(movimiento):
     producer.flush()
 
 def mueve_dron(id_dron):
-    comienzo = False
-    while comienzo == False:
-        comienzo = consume_comienzo(id_dron)
+    comienzo = ""
+    #while comienzo != "OK":
+    #    comienzo = consume_comienzo(id_dron)
     pares = consume_pares(id_dron)
     print("\n-------- MOVIMIENTO DE DRON --------")
     path = calcula_path(id_dron, pares)
@@ -193,7 +194,7 @@ def mueve_dron(id_dron):
         id_dron = str(id_dron)
         mov = "" + id_dron + "," + move
         envia_movimiento(mov)
-        print(f"Movimiento '{movimiento}' enviado a Kafka.")
+        print(f"Movimiento '{move}' enviado a Kafka.")
         consume_mapa(id_dron)
         time.sleep(3)
 
