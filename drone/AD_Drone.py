@@ -6,6 +6,7 @@ import random
 import sys
 import time
 import json
+import ast
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
 TOPIC = 'movimientos-dron'  # Nombre del tópico de Kafka
@@ -110,6 +111,7 @@ def consume_pares(id_dron):
         pares = message.value.decode('utf-8')
         print(pares)
         break
+    return pares
 
 def imprimir_mapa(mapa):
     for fila in mapa:
@@ -119,6 +121,48 @@ def imprimir_mapa(mapa):
             else:
                 print(casilla, end=' ')  
         print()  
+
+def calcula_path(id_dron, pares):
+    final = ()
+    lista_pares = ast.literal_eval(pares)
+
+    for pos in lista_pares:
+        if pos[0] == id_dron:
+            final = (pos[1]["x"],pos[1]["y"])
+
+    x, y = 1, 1
+    camino = []
+    while x!=final[0] or y!= final[1]:
+        if x < final[0] and y < final[1]:
+            camino.append('SE')
+            x += 1
+            y += 1
+        elif x < final[0]:
+            camino.append('E')
+            x += 1
+        elif y < final[1]:
+            camino.append('S')
+            y += 1
+        elif x > final[0] and y > final[1]:
+            camino.append('NO')
+            x -= 1
+            y -= 1
+        elif x > final[0]:
+            camino.append('O')
+            x -= 1
+        elif y > final[1]:
+            camino.append('N')
+            y -= 1
+        elif x < final[0] and y > final[1]:
+            camino.append('SO')
+            x += 1
+            y -= 1
+        elif x > final[0] and y < final[1]:
+            camino.append('NE')
+            x -= 1
+            y += 1
+
+    return camino
 
 def consume_mapa(id_dron):
     consumer = KafkaConsumer(TOPIC_MAPA, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='mapa-group-'+id_dron)
@@ -141,12 +185,13 @@ def mueve_dron(id_dron):
     comienzo = False
     while comienzo == False:
         comienzo = consume_comienzo(id_dron)
-    consume_pares(id_dron)
+    pares = consume_pares(id_dron)
     print("\n-------- MOVIMIENTO DE DRON --------")
-    movimientos = ['N', 'S', 'E', 'O']
+    path = calcula_path(id_dron, pares)
     while True:
-        movimiento = random.choice(movimientos)  # Selecciona un movimiento aleatorio
-        mov = "" + id_dron + "," + movimiento
+        move = path.pop(0)  # Selecciona el siguiente movimiento de la lista calculada
+        id_dron = str(id_dron)
+        mov = "" + id_dron + "," + move
         envia_movimiento(mov)
         print(f"Movimiento '{movimiento}' enviado a Kafka.")
         consume_mapa(id_dron)

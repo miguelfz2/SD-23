@@ -161,7 +161,11 @@ def consume_kafka(mapa):
     # Diccionario para mapear direcciones a cambios de posición
     movimientos = {
         'E': (0, 1),  # Mover hacia el este (aumentar la columna)
+        'SE': (1, 1), # Mover hacia el sudeste (aumenta fila y columna)
+        'NE': (-1, 1) # Mover hacia el noreste (disminuir fila aumentar columna)
         'O': (0, -1),  # Mover hacia el oeste (disminuir la columna)
+        'NO': (-1, -1), #Mover hacia el noroeste (disiminuir fila y columna)
+        'SO': (1, -1), #Mover hacia el sudoeste (aumentar fila disminuir columna)
         'N': (-1, 0),  # Mover hacia el norte (disminuir la fila)
         'S': (1, 0)   # Mover hacia el sur (aumentar la fila)
     }
