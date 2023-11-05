@@ -7,10 +7,10 @@ import json
 import sys
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
-TOPIC_OK = 'espectacul'
-TOPIC_MAPA = 'mapa'
-TOPIC = 'movimient'
-TOPIC_PARES = 'par'
+TOPIC = 'mov'  # Nombre del tópico de Kafka
+TOPIC_OK = 'espec'
+TOPIC_PARES = 'pars'
+TOPIC_MAPA = 'mapas'
 
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
@@ -48,7 +48,7 @@ def imprimir_mapa(mapa):
     for fila in mapa:
         for casilla in fila:
             if casilla == 0:
-                print(' ', end=' ')  
+                print('-', end=' ')  
             else:
                 print(casilla, end=' ')  
         print()  
@@ -191,8 +191,8 @@ def consume_kafka(mapa):
             nueva_columna = pos[1] + cambio_columna
 
             # Actualizar el mapa si la nueva posición está dentro de los límites
-            if 0 <= nueva_fila < 20 and 0 <= nueva_columna < 20:
-                mapa = cambiar_mapa('', pos, mapa)
+            if 0 <= nueva_fila <= 20 and 0 <= nueva_columna <= 20:
+                mapa = cambiar_mapa(0, pos, mapa)
                 pos = (nueva_fila, nueva_columna)
                 mapa = cambiar_mapa(id_dron, pos, mapa)
                 print("Posicion:" + str(pos))

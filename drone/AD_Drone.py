@@ -9,10 +9,10 @@ import json
 import ast
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
-TOPIC = 'movimient'  # Nombre del tópico de Kafka
-TOPIC_OK = 'espectacul'
-TOPIC_PARES = 'par'
-TOPIC_MAPA = 'mapa'
+TOPIC = 'mov'  # Nombre del tópico de Kafka
+TOPIC_OK = 'espec'
+TOPIC_PARES = 'pars'
+TOPIC_MAPA = 'mapas'
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -87,7 +87,6 @@ def envia_token(id_dron,token):
     respuesta = client.recv(2048).decode(FORMATO)
     print(respuesta)
     if respuesta == "OK":
-        mueve_dron(id_dron)
         return True
     else:
         return False
@@ -118,7 +117,7 @@ def imprimir_mapa(mapa):
     for fila in mapa:
         for casilla in fila:
             if casilla == 0:
-                print(' ', end=' ')  
+                print('-', end=' ')  
             else:
                 print(casilla, end=' ')  
         print()  
@@ -177,7 +176,7 @@ def consume_mapa(id_dron):
     for message in consumer:
         mapa = message.value.decode('utf-8')
         mapa = json.loads(mapa)
-        #imprimir_mapa(mapa)
+        imprimir_mapa(mapa)
         break
 
 def envia_movimiento(movimiento):
@@ -190,15 +189,22 @@ def envia_movimiento(movimiento):
 
 def mueve_dron(id_dron):
     comienzo = ""
-    while comienzo != "OK":
-        comienzo = consume_comienzo(id_dron)
-    pares = consume_pares(id_dron)
+    pares = ""
+    #while comienzo != "OK":
+    #    comienzo = consume_comienzo(id_dron)
+    while pares == "":
+        pares = consume_pares(id_dron)
     print("\n-------- MOVIMIENTO DE DRON --------")
     path = calcula_path(id_dron, pares)
     if not path:
         print("El dron ya esta en la posicion final")
-    else:
         while True:
+            consume_mapa(id_dron)
+            time.sleep(3)
+    else:
+        while len(path)>0:
+            print("Longitud path: " + str(len(path)))
+            print("EL PATH ES: " + str(path))
             move = path.pop(0)  # Selecciona el siguiente movimiento de la lista calculada
             id_dron = str(id_dron)
             mov = "" + id_dron + "," + move
@@ -206,6 +212,7 @@ def mueve_dron(id_dron):
             print(f"Movimiento '{move}' enviado a Kafka.")
             consume_mapa(id_dron)
             time.sleep(3)
+            print("Longitud path: " + str(len(path)))
 
 def main():
     if len(sys.argv[1:]) < 6:
@@ -221,6 +228,7 @@ def main():
             if opc == '2':
                 if token != '':
                     conectado = envia_token(id_dron,token)
+                    mueve_dron(id_dron)
                 else:
                     print("Por favor, registrese!")
             elif opc == '1':
