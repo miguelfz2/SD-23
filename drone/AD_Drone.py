@@ -7,6 +7,7 @@ import sys
 import time
 import json
 import ast
+import pickle
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
 TOPIC = 'mov'  # Nombre del tópico de Kafka
@@ -171,13 +172,15 @@ def calcula_path(id_dron, pares):
     return camino
 
 def consume_mapa(id_dron):
-    consumer = KafkaConsumer(TOPIC_MAPA, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='mapa-group-'+id_dron)
-    print("CONSUMIENDO MAPA")
+    consumer = KafkaConsumer(TOPIC_MAPA, group_id='mapa-group-'+id_dron,
+                         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                         value_deserializer=pickle.loads)
     for message in consumer:
-        mapa = message.value.decode('utf-8')
-        mapa = json.loads(mapa)
-        imprimir_mapa(mapa)
-        break
+        mapa = message.value  # Obtiene el mapa del mensaje
+        print("Mapa recibido desde Kafka:")
+        for fila in mapa:
+            print(fila)
+        
 
 def envia_movimiento(movimiento):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,

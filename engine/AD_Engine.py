@@ -5,6 +5,7 @@ import threading
 import time
 import json
 import sys
+import pickle
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
 TOPIC = 'mov'  # Nombre del tópico de Kafka
@@ -133,11 +134,10 @@ def envia_pares(pares):
     producer.flush()
 
 def envia_mapa(mapa):
-    mapa_json = json.dumps(mapa)
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                             value_serializer=lambda v: str(v).encode('utf-8'))
+                         value_serializer=pickle.dumps)
 
-    producer.send(TOPIC_MAPA, value=mapa_json)
+    producer.send(TOPIC_MAPA, value=mapa)
     producer.flush()
 
 def envia_OK(ciudad):
@@ -155,9 +155,24 @@ def envia_OK(ciudad):
             producer.flush()
         time.sleep(5)
 
+def leer_kafka():
+    consumer = KafkaConsumer(TOPIC,
+                         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                         group_id='movimiento-group',
+                         )
+    
+    message = next(consumer)
+
+    # Procesa el mensaje
+    print('Mensaje recibido: {}'.format(message.value.decode('utf-8')))
+
+    # Cierra el consumidor
+    consumer.close()
+
+
 # Función para consumir mensajes de Kafka
 def consume_kafka(mapa):
-    consumer = KafkaConsumer(TOPIC, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='movimientos-group')
+    
     print(f"Esperando movimientos del dron en el tópico '{TOPIC}'...")
     
     # Diccionario para mapear direcciones a cambios de posición
