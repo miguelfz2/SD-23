@@ -12,7 +12,7 @@ import pickle
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
 TOPIC = 'mov'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'pars'
+TOPIC_PARES = 'par2'
 TOPIC_MAPA = 'mapas'
 
 FORMATO = 'utf-8'
@@ -171,6 +171,15 @@ def calcula_path(id_dron, pares):
 
     return camino
 
+def imprimir_mapa(mapa):
+    for fila in mapa:
+        for casilla in fila:
+            if casilla == 0:
+                print('-', end=' ')  
+            else:
+                print(casilla, end=' ')  
+        print() 
+
 def consume_mapa(id_dron):
     consumer = KafkaConsumer(TOPIC_MAPA, group_id='mapa-group-'+id_dron,
                          bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
@@ -178,8 +187,7 @@ def consume_mapa(id_dron):
     for message in consumer:
         mapa = message.value  # Obtiene el mapa del mensaje
         print("Mapa recibido desde Kafka:")
-        for fila in mapa:
-            print(fila)
+        #imprimir_mapa(mapa)
         
 
 def envia_movimiento(movimiento):

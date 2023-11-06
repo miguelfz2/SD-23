@@ -10,8 +10,8 @@ from kafka import KafkaConsumer
 from kafka import KafkaProducer
 TOPIC = 'mov'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'pars'
-TOPIC_MAPA = 'mapas'
+TOPIC_PARES = 'par2'
+TOPIC_MAPA = 'mapas1'
 
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
@@ -20,7 +20,7 @@ DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092' ##PARAMETRIZAR
 
 # Maximo numero de drones
-MAX_CONEXIONES = 1 ##PARAMETRIZAR
+MAX_CONEXIONES = 2 ##PARAMETRIZAR
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -181,7 +181,7 @@ def leer_kafka():
     return mensaje_recibido
 
 
-# Función para consumir mensajes de Kafka
+# Funcion para consumir mensajes de Kafka
 def calcular_pos(mapa):
     
     print(f"Esperando movimientos del dron en el tópico '{TOPIC}'...")
@@ -281,7 +281,7 @@ def main():
                         ok_thread.start()  
                         clima = consulta_clima(ciudad)  
                         envia_pares(pares)
-                        while clima == True:            
+                        while consulta_clima(ciudad) == True:            
                             id_dron, pos = calcular_pos(mapa)
                             print("ID: "+id_dron)
                             print(pos)
