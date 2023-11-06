@@ -20,7 +20,7 @@ DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092' ##PARAMETRIZAR
 
 # Maximo numero de drones
-MAX_CONEXIONES = 10 ##PARAMETRIZAR
+MAX_CONEXIONES = 1 ##PARAMETRIZAR
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -60,7 +60,7 @@ def construir_mapa():
 
 #Devuelve el mapa con el cambio de posicion dado
 def cambiar_mapa(dron, posicion, mapa):
-    if 0 <= posicion[0] < 20 and 0 <= posicion[1] < 20:
+    if 0 <= posicion[0] <= 20 and 0 <= posicion[1] <= 20:
         mapa[posicion[0]][posicion[1]] = dron
     else:
         print("La posición está fuera de los límites del mapa.")
@@ -135,7 +135,7 @@ def envia_pares(pares):
 
 def envia_mapa(mapa):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                         value_serializer=pickle.dumps)
+                         value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
     producer.send(TOPIC_MAPA, value=mapa)
     producer.flush()
@@ -157,21 +157,32 @@ def envia_OK(ciudad):
 
 def leer_kafka():
     consumer = KafkaConsumer(TOPIC,
-                         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                         group_id='movimiento-group',
-                         )
-    
-    message = next(consumer)
+                             bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                             group_id='mov-group',
+                             )
 
-    # Procesa el mensaje
-    print('Mensaje recibido: {}'.format(message.value.decode('utf-8')))
+    start_time = time.time()
+    mensaje_recibido = None
+
+    while time.time() - start_time < 20:
+        records = consumer.poll(timeout_ms=1000, max_records=1)
+        for record in records.values():
+            for message in record:
+                mensaje_recibido = message.value.decode('utf-8')
+                break  
+            if mensaje_recibido:
+                break  
+        if mensaje_recibido:
+            break  
 
     # Cierra el consumidor
     consumer.close()
 
+    return mensaje_recibido
+
 
 # Función para consumir mensajes de Kafka
-def consume_kafka(mapa):
+def calcular_pos(mapa):
     
     print(f"Esperando movimientos del dron en el tópico '{TOPIC}'...")
     
@@ -187,35 +198,35 @@ def consume_kafka(mapa):
         'S': (1, 0)   # Mover hacia el sur (aumentar la fila)
     }
     pos = (0, 0)
-    for message in consumer:
-        respuesta = message.value.decode('utf-8')
-        res = respuesta.split(",")
-        id_dron = res[0]
-        movimiento = res[1]
-        print("El id es: "+id_dron)
-        pos = leer_id_mapa(id_dron, mapa)
-        print(f"Nuevo movimiento del dron: {movimiento}")
-
-        # Verificar que el movimiento sea válido
-        if movimiento in movimientos:
-            # Obtener el cambio de posición para la dirección dada
-            cambio_fila, cambio_columna = movimientos[movimiento]
+    
+    respuesta = leer_kafka()
+    res = respuesta.split(",")
+    id_dron = res[0]
+    movimiento = res[1]
+    print("El id es: "+id_dron)
+    pos = leer_id_mapa(id_dron, mapa)
+    print(f"Nuevo movimiento del dron: {movimiento}")
+    cambiar_mapa(0, pos, mapa)
+    # Verificar que el movimiento sea válido
+    if movimiento in movimientos:
+        # Obtener el cambio de posición para la dirección dada
+        cambio_fila, cambio_columna = movimientos[movimiento]
             
-            # Calcular la nueva posición del dron
-            nueva_fila = pos[0] + cambio_fila
-            nueva_columna = pos[1] + cambio_columna
+        # Calcular la nueva posición del dron
+        nueva_fila = pos[0] + cambio_fila
+        nueva_columna = pos[1] + cambio_columna
 
-            # Actualizar el mapa si la nueva posición está dentro de los límites
-            if 0 <= nueva_fila <= 20 and 0 <= nueva_columna <= 20:
-                mapa = cambiar_mapa(0, pos, mapa)
-                pos = (nueva_fila, nueva_columna)
-                mapa = cambiar_mapa(id_dron, pos, mapa)
-                print("Posicion:" + str(pos))
-                return mapa
-            else:
-                print("Movimiento fuera de los límites del mapa.")
+        # Actualizar el mapa si la nueva posición está dentro de los límites
+        if 0 <= nueva_fila <= 20 and 0 <= nueva_columna <= 20:
+            #mapa = cambiar_mapa(0, pos, mapa)
+            pos = (nueva_fila, nueva_columna)
+            #mapa = cambiar_mapa(id_dron, pos, mapa)
+            #print("Posicion:" + str(pos))
+            return id_dron, pos
         else:
-            print("Movimiento no válido.")
+            print("Movimiento fuera de los límites del mapa.")
+    else:
+        print("Movimiento no válido.")
 
 
 def menu():
@@ -271,7 +282,10 @@ def main():
                         clima = consulta_clima(ciudad)  
                         envia_pares(pares)
                         while clima == True:            
-                            mapa = consume_kafka(mapa)
+                            id_dron, pos = calcular_pos(mapa)
+                            print("ID: "+id_dron)
+                            print(pos)
+                            cambiar_mapa(id_dron, pos, mapa)
                             imprimir_mapa(mapa)
                             envia_mapa(mapa)
                     elif opc == '2':

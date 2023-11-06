@@ -1,23 +1,38 @@
 from kafka import KafkaConsumer
-import pickle
+import time
 
 # Configura el servidor y el tema de Kafka
 bootstrap_servers = 'localhost:9092'  # Cambia esto según la configuración de tu servidor Kafka
 topic = 'mov'
 
-# Crea un consumidor Kafka
+def leer_mensaje_kafka():
+    consumer = KafkaConsumer(topic,
+                             bootstrap_servers=bootstrap_servers,
+                             group_id=None,
+                             auto_offset_reset='latest')
 
+    start_time = time.time()
+    mensaje_recibido = None
 
-consumer = KafkaConsumer(topic, bootstrap_servers=bootstrap_servers, group_id='movimientos-group')
-print(f"Esperando movimientos del dron en el tópico ''...")
+    while time.time() - start_time < 20:
+        records = consumer.poll(timeout_ms=1000, max_records=1)
+        for record in records.values():
+            for message in record:
+                mensaje_recibido = message.value.decode('utf-8')
+                break  
+            if mensaje_recibido:
+                break  
+        if mensaje_recibido:
+            break  
 
-print("Esperando mensajes desde Kafka...")
+    # Cierra el consumidor
+    consumer.close()
 
-# Se suscribe al tema y consume mensajes
-for message in consumer:
-    mov = message.value  # Obtiene el mapa del mensaje
-    print("Mov recibido desde Kafka:")
-    print(mov)
+    return mensaje_recibido
 
-# Cierra el consumidor Kafka (esto no se ejecutará ya que el bucle anterior es infinito)
-consumer.close()
+msg = leer_mensaje_kafka()
+
+if msg:
+    print("Mensaje recibido:", msg)
+else:
+    print("No se recibió ningún mensaje durante 20 segundos.")

@@ -104,7 +104,7 @@ def consume_comienzo(id_dron):
 
 def consume_pares(id_dron):
     # Configurar el consumidor de Kafka
-    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='pares-group-'+id_dron)
+    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='pares-group-'+id_dron, auto_offset_reset='latest')
     print(f"Esperando posiciones finales del dron en el tópico '{TOPIC_PARES}'...")
     pares = ""
     # Consumir mensajes del tópico
@@ -174,7 +174,7 @@ def calcula_path(id_dron, pares):
 def consume_mapa(id_dron):
     consumer = KafkaConsumer(TOPIC_MAPA, group_id='mapa-group-'+id_dron,
                          bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                         value_deserializer=pickle.loads)
+                         value_deserializer=lambda x: json.loads(x.decode('utf-8')))
     for message in consumer:
         mapa = message.value  # Obtiene el mapa del mensaje
         print("Mapa recibido desde Kafka:")
@@ -202,7 +202,7 @@ def mueve_dron(id_dron):
     if not path:
         print("El dron ya esta en la posicion final")
         while True:
-            consume_mapa(id_dron)
+            #consume_mapa(id_dron)
             time.sleep(3)
     else:
         while len(path)>0:
@@ -213,7 +213,7 @@ def mueve_dron(id_dron):
             mov = "" + id_dron + "," + move
             envia_movimiento(mov)
             print(f"Movimiento '{move}' enviado a Kafka.")
-            consume_mapa(id_dron)
+            #consume_mapa(id_dron)
             time.sleep(3)
             print("Longitud path: " + str(len(path)))
 
