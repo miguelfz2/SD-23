@@ -10,10 +10,10 @@ import ast
 import pickle
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
-TOPIC = 'mov'  # Nombre del tópico de Kafka
+TOPIC = 'm3'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'par2'
-TOPIC_MAPA = 'mapas'
+TOPIC_PARES = 'p7'
+TOPIC_MAPA = 'ma6'
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -93,7 +93,7 @@ def envia_token(id_dron,token):
         return False
 
 def consume_comienzo(id_dron):
-    consumer = KafkaConsumer(TOPIC_OK, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='espectaculo-group-'+id_dron)
+    consumer = KafkaConsumer(TOPIC_OK, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, auto_offset_reset='latest', group_id='espectaculo-group-'+id_dron)
     print(f"Esperando confirmacion de inicio del espectaculo '{TOPIC_OK}'...")
     ok=""
     for message in consumer:
@@ -104,7 +104,7 @@ def consume_comienzo(id_dron):
 
 def consume_pares(id_dron):
     # Configurar el consumidor de Kafka
-    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, group_id='pares-group-'+id_dron, auto_offset_reset='latest')
+    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, auto_offset_reset='latest', group_id='pares-group-'+id_dron)
     print(f"Esperando posiciones finales del dron en el tópico '{TOPIC_PARES}'...")
     pares = ""
     # Consumir mensajes del tópico
@@ -171,23 +171,31 @@ def calcula_path(id_dron, pares):
 
     return camino
 
-def imprimir_mapa(mapa):
-    for fila in mapa:
-        for casilla in fila:
-            if casilla == 0:
-                print('-', end=' ')  
-            else:
-                print(casilla, end=' ')  
-        print() 
 
 def consume_mapa(id_dron):
-    consumer = KafkaConsumer(TOPIC_MAPA, group_id='mapa-group-'+id_dron,
-                         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                         value_deserializer=lambda x: json.loads(x.decode('utf-8')))
-    for message in consumer:
-        mapa = message.value  # Obtiene el mapa del mensaje
-        print("Mapa recibido desde Kafka:")
-        #imprimir_mapa(mapa)
+    consumer = KafkaConsumer(TOPIC_MAPA,
+                             bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                             group_id='mapa-group'+id_dron, auto_offset_reset='latest'
+                             )
+
+    start_time = time.time()
+    mensaje_recibido = None
+
+    while time.time() - start_time < 20:
+        records = consumer.poll(timeout_ms=1000, max_records=1)
+        for record in records.values():
+            for message in record:
+                mensaje_recibido = message.value.decode('utf-8')
+                break  
+            if mensaje_recibido:
+                break  
+        if mensaje_recibido:
+            break  
+
+    # Cierra el consumidor
+    consumer.close()
+
+    return mensaje_recibido
         
 
 def envia_movimiento(movimiento):
@@ -207,23 +215,46 @@ def mueve_dron(id_dron):
         pares = consume_pares(id_dron)
     print("\n-------- MOVIMIENTO DE DRON --------")
     path = calcula_path(id_dron, pares)
+    print(pares)
     if not path:
+        msg = ""
         print("El dron ya esta en la posicion final")
-        while True:
-            #consume_mapa(id_dron)
+        seguir = True
+        while seguir == True :
+            if msg != "ESPECTACULO FINALIZADO":
+                seguir = False
+            msg = consume_mapa(id_dron)
             time.sleep(3)
     else:
-        while len(path)>0:
-            print("Longitud path: " + str(len(path)))
-            print("EL PATH ES: " + str(path))
+        tam = len(path)
+        while tam>0:
             move = path.pop(0)  # Selecciona el siguiente movimiento de la lista calculada
             id_dron = str(id_dron)
             mov = "" + id_dron + "," + move
             envia_movimiento(mov)
-            print(f"Movimiento '{move}' enviado a Kafka.")
-            #consume_mapa(id_dron)
             time.sleep(3)
-            print("Longitud path: " + str(len(path)))
+            print(f"Movimiento '{move}' enviado a Kafka.")
+            msg = consume_mapa(id_dron)
+            if msg == "ESPECTACULO FINALIZADO":
+                break
+            while msg == "CONDICIONES ADVERSAS":
+                msg = consume_mapa(id_dron)
+                print(msg)
+                time.sleep(3)
+            print(msg)
+            tam = len(path)
+        seguir = True
+        msg = ""
+        while seguir == True :
+            if msg != "ESPECTACULO FINALIZADO":
+                msg = consume_mapa(id_dron)
+                time.sleep(3)
+            else:
+                seguir = False
+                print(msg)
+                
+            
+            
 
 def main():
     if len(sys.argv[1:]) < 6:

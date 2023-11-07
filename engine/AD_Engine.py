@@ -6,12 +6,13 @@ import time
 import json
 import sys
 import pickle
+from turtle import position
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
-TOPIC = 'mov'  # Nombre del tópico de Kafka
+TOPIC = 'm3'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'par2'
-TOPIC_MAPA = 'mapas1'
+TOPIC_PARES = 'p7'
+TOPIC_MAPA = 'ma6'
 
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
@@ -20,7 +21,7 @@ DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092' ##PARAMETRIZAR
 
 # Maximo numero de drones
-MAX_CONEXIONES = 2 ##PARAMETRIZAR
+MAX_CONEXIONES = 5 ##PARAMETRIZAR
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -60,7 +61,7 @@ def construir_mapa():
 
 #Devuelve el mapa con el cambio de posicion dado
 def cambiar_mapa(dron, posicion, mapa):
-    if 0 <= posicion[0] <= 20 and 0 <= posicion[1] <= 20:
+    if 0 <= posicion[0] < 20 and 0 <= posicion[1] < 20:
         mapa[posicion[0]][posicion[1]] = dron
     else:
         print("La posición está fuera de los límites del mapa.")
@@ -133,11 +134,11 @@ def envia_pares(pares):
     producer.send(TOPIC_PARES, value=pares)
     producer.flush()
 
-def envia_mapa(mapa):
+def envia_mapa(msg):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                         value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+                             value_serializer=lambda v: str(v).encode('utf-8'))
 
-    producer.send(TOPIC_MAPA, value=mapa)
+    producer.send(TOPIC_MAPA, value=msg)
     producer.flush()
 
 def envia_OK(ciudad):
@@ -158,14 +159,14 @@ def envia_OK(ciudad):
 def leer_kafka():
     consumer = KafkaConsumer(TOPIC,
                              bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                             group_id='mov-group',
+                             group_id='mov-group', auto_offset_reset='latest'
                              )
 
     start_time = time.time()
     mensaje_recibido = None
 
     while time.time() - start_time < 20:
-        records = consumer.poll(timeout_ms=1000, max_records=1)
+        records = consumer.poll(timeout_ms=5000, max_records=1)
         for record in records.values():
             for message in record:
                 mensaje_recibido = message.value.decode('utf-8')
@@ -198,8 +199,9 @@ def calcular_pos(mapa):
         'S': (1, 0)   # Mover hacia el sur (aumentar la fila)
     }
     pos = (0, 0)
-    
     respuesta = leer_kafka()
+    if respuesta is None:
+        return None, None
     res = respuesta.split(",")
     id_dron = res[0]
     movimiento = res[1]
@@ -217,7 +219,7 @@ def calcular_pos(mapa):
         nueva_columna = pos[1] + cambio_columna
 
         # Actualizar el mapa si la nueva posición está dentro de los límites
-        if 0 <= nueva_fila <= 20 and 0 <= nueva_columna <= 20:
+        if 0 <= nueva_fila < 20 and 0 <= nueva_columna <= 20:
             #mapa = cambiar_mapa(0, pos, mapa)
             pos = (nueva_fila, nueva_columna)
             #mapa = cambiar_mapa(id_dron, pos, mapa)
@@ -242,11 +244,17 @@ PORT = 12345         # Puerto del servidor PARAMETRIZAR
 
 def main():
     mapa = construir_mapa()
+    mapa_final = construir_mapa()
     limpiar_mapa(mapa)
+    limpiar_mapa(mapa_final)
     pares = leer_json("./json/figura_simple.json")
+    for id_dron, pos_f in pares:
+        x = pos_f['x']
+        y = pos_f['y']
+        pos_final = (y, x)
+        cambiar_mapa(id_dron, pos_final, mapa_final)
+
     drones_json = len(pares)
-    print("json leido")
-    print(drones_json)
     # Crear un socket de servidor
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
@@ -274,28 +282,50 @@ def main():
             if MAX_CONEXIONES == CONEX_ACTIVAS or CONEX_ACTIVAS == drones_json:
                 time.sleep(1)
                 opc = '0'
-                while opc != '1' or opc != '2':
+                opc = menu()
+                print("La opcion es: " + opc)
+                while opc != '1' and opc != '2':
                     opc = menu()
-                    if opc == '1':
-                        ok_thread = threading.Thread(target=envia_OK, args=(ciudad,))
-                        ok_thread.start()  
-                        clima = consulta_clima(ciudad)  
-                        envia_pares(pares)
-                        while consulta_clima(ciudad) == True:            
+                if opc == '1':
+                    ok_thread = threading.Thread(target=envia_OK, args=(ciudad,))
+                    ok_thread.start()  
+                    clima = consulta_clima(ciudad)  
+                    envia_pares(pares)
+                    comp = True
+                    if mapa != mapa_final:
+                        comp = False
+                    while comp == False:
+                        print(comp)
+                        if consulta_clima(ciudad) == True:            
                             id_dron, pos = calcular_pos(mapa)
-                            print("ID: "+id_dron)
-                            print(pos)
-                            cambiar_mapa(id_dron, pos, mapa)
-                            imprimir_mapa(mapa)
-                            envia_mapa(mapa)
-                    elif opc == '2':
-                        sys.exit()
-                    else:
-                        print("Opcion incorrecta")
+                            if id_dron is not None and pos is not None:
+                                print("ID: "+id_dron)
+                                print(pos)
+                                cambiar_mapa(id_dron, pos, mapa)
+                                imprimir_mapa(mapa)
+                                msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
+                                envia_mapa(msg)
+                                if mapa == mapa_final:
+                                    comp = True
+                            else:
+                                print("NO SE HAN DETECTADO MAS MOVIMIENTO")
+                                comp = True
+                                envia_mapa("ESPECTACULO FINALIZADO")
+                                raise Exception()
+                        else:
+                            print("CONDICIONES ADVERSAS")
+                            time.sleep(3)
+                            envia_mapa("CONDICIONES ADVERSAS")
+                    msg = "ESPECTACULO FINALIZADO"
+                    envia_mapa(msg)
+                    print("ESPECTACULO FINALIZADO")
+                elif opc == '2':
+                    raise Exception()
+                else:
+                    print("Opcion incorrecta")
 
-    except KeyboardInterrupt:
+    except Exception:
         sys.exit()
-        print("Servidor detenido.")
     finally:
         # Cerrar el socket del servidor al finalizar
         server_socket.close()
