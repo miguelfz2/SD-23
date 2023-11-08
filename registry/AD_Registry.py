@@ -6,8 +6,6 @@ import sys
 
 FORMATO = 'utf-8'
 
-
-
 def obtener_conexion():
     return sqlite3.connect('drones.db')  # Base de datos
 
