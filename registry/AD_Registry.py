@@ -57,7 +57,7 @@ def obtener_id_por_alias(alias, cursor):
 def editar_alias(alias, nuevo_alias, cursor):
     dron_id = obtener_id_por_alias(alias, cursor)
     if dron_id:
-        cursor.execute('UPDATE drones SET alias = ? WHERE id = ?', (nuevo_alias, dron_id))
+        cursor.execute('UPDATE dron SET alias = ? WHERE id = ?', (nuevo_alias, dron_id))
         return f"Alias del Dron ID '{dron_id}' editado a '{nuevo_alias}'"
     else:
         return "Dron no encontrado con el alias proporcionado."

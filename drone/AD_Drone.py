@@ -10,10 +10,10 @@ import ast
 import pickle
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
-TOPIC = 'm3'  # Nombre del tópico de Kafka
+TOPIC = 'mom1'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'p7'
-TOPIC_MAPA = 'ma6'
+TOPIC_PARES = 'pa6'
+TOPIC_MAPA = 'mapm4'
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -182,7 +182,7 @@ def consume_mapa(id_dron):
     mensaje_recibido = None
 
     while time.time() - start_time < 20:
-        records = consumer.poll(timeout_ms=1000, max_records=1)
+        records = consumer.poll(timeout_ms=5000, max_records=1)
         for record in records.values():
             for message in record:
                 mensaje_recibido = message.value.decode('utf-8')
@@ -203,6 +203,7 @@ def envia_movimiento(movimiento):
                              value_serializer=lambda v: str(v).encode('utf-8'))
 
     # Enviar el movimiento al tópico 'movimientos-dron'
+    print("MOV: "+ movimiento)
     producer.send(TOPIC, value=movimiento)
     producer.flush()
 
@@ -216,6 +217,8 @@ def mueve_dron(id_dron):
     print("\n-------- MOVIMIENTO DE DRON --------")
     path = calcula_path(id_dron, pares)
     print(pares)
+    lista_pares = ast.literal_eval(pares)
+    drones_activos = len(lista_pares)
     if not path:
         msg = ""
         print("El dron ya esta en la posicion final")
@@ -224,34 +227,31 @@ def mueve_dron(id_dron):
             if msg != "ESPECTACULO FINALIZADO":
                 seguir = False
             msg = consume_mapa(id_dron)
-            time.sleep(3)
+            time.sleep(2)
     else:
-        tam = len(path)
-        while tam>0:
+        while len(path)>0:
             move = path.pop(0)  # Selecciona el siguiente movimiento de la lista calculada
             id_dron = str(id_dron)
             mov = "" + id_dron + "," + move
+            time.sleep(2)
             envia_movimiento(mov)
-            time.sleep(3)
             print(f"Movimiento '{move}' enviado a Kafka.")
-            msg = consume_mapa(id_dron)
+            cont = 0
+            drones_activos = 1
+            while cont < drones_activos:
+                msg = consume_mapa(id_dron)
+                print(msg)
+                cont = cont + 1
             if msg == "ESPECTACULO FINALIZADO":
                 break
-            while msg == "CONDICIONES ADVERSAS":
-                msg = consume_mapa(id_dron)
-                print(msg)
-                time.sleep(3)
-            print(msg)
-            tam = len(path)
-        seguir = True
-        msg = ""
-        while seguir == True :
-            if msg != "ESPECTACULO FINALIZADO":
-                msg = consume_mapa(id_dron)
-                time.sleep(3)
+            elif msg == "CONDICIONES ADVERSAS":
+                while msg == "CONDICIONES ADVERSAS":
+                    msg = consume_mapa(id_dron)
+                    print(msg)
+                    time.sleep(2)
             else:
-                seguir = False
-                print(msg)
+                x = 1
+        
                 
             
             
@@ -271,6 +271,15 @@ def main():
                 if token != '':
                     conectado = envia_token(id_dron,token)
                     mueve_dron(id_dron)
+                    seguir = True
+                    msg = ""
+                    while seguir == True :
+                        if msg != "ESPECTACULO FINALIZADO":
+                            msg = consume_mapa(id_dron)
+                            time.sleep(3)
+                        else:
+                            seguir = False
+                            print(msg)
                 else:
                     print("Por favor, registrese!")
             elif opc == '1':
