@@ -9,11 +9,10 @@ import pickle
 from turtle import position
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
-TOPIC = 'm3'  # Nombre del tópico de Kafka
+TOPIC = 'mom91'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'p7'
-TOPIC_MAPA = 'ma6'
-
+TOPIC_PARES = 'pa101'
+TOPIC_MAPA = 'mapm81'
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 
@@ -65,7 +64,6 @@ def cambiar_mapa(dron, posicion, mapa):
         mapa[posicion[0]][posicion[1]] = dron
     else:
         print("La posición está fuera de los límites del mapa.")
-
     return mapa
 
 def limpiar_mapa(mapa):
@@ -137,7 +135,7 @@ def envia_pares(pares):
 def envia_mapa(msg):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                              value_serializer=lambda v: str(v).encode('utf-8'))
-
+    time.sleep(1)
     producer.send(TOPIC_MAPA, value=msg)
     producer.flush()
 
@@ -231,6 +229,22 @@ def calcular_pos(mapa):
         print("Movimiento no válido.")
 
 
+def comprueba_drones(ids):
+    mayor = 0
+    idd = 0
+    for id_d in ids:
+        if id_d > mayor:
+            mayor = id_d
+    
+    tam = len(ids)
+    tam = tam * 2
+    print(tam)
+    for id_d in ids:
+        if id_d + tam < mayor:
+            idd = id_d
+    
+    return idd
+
 def menu():
     print()
     print("1. Iniciar espectaculo")
@@ -255,6 +269,9 @@ def main():
         cambiar_mapa(id_dron, pos_final, mapa_final)
 
     drones_json = len(pares)
+    if MAX_CONEXIONES < drones_json:
+        print("ERROR: HAY MENOS CONEXCIONES QUE DRONES PARA EL ESPECTACULO")
+        sys.exit(1)
     # Crear un socket de servidor
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
@@ -283,7 +300,6 @@ def main():
                 time.sleep(1)
                 opc = '0'
                 opc = menu()
-                print("La opcion es: " + opc)
                 while opc != '1' and opc != '2':
                     opc = menu()
                 if opc == '1':
@@ -291,27 +307,50 @@ def main():
                     ok_thread.start()  
                     clima = consulta_clima(ciudad)  
                     envia_pares(pares)
+                    ids_drones = [0] * drones_json
+                    print(ids_drones[id_dron-1])
                     comp = True
                     if mapa != mapa_final:
                         comp = False
                     while comp == False:
-                        print(comp)
-                        if consulta_clima(ciudad) == True:            
-                            id_dron, pos = calcular_pos(mapa)
-                            if id_dron is not None and pos is not None:
-                                print("ID: "+id_dron)
-                                print(pos)
-                                cambiar_mapa(id_dron, pos, mapa)
-                                imprimir_mapa(mapa)
-                                msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
-                                envia_mapa(msg)
-                                if mapa == mapa_final:
+                        if consulta_clima(ciudad) == True: 
+                            contador = 0
+                            drones_act = 1 #drones_json 
+                            while contador < drones_act:        
+                                id_dron, pos = calcular_pos(mapa)
+                                if id_dron is not None and pos is not None:
+                                    idd = comprueba_drones(ids_drones)
+                                    if idd == 0:
+                                        print("ID: "+id_dron)
+                                        print(pos)
+                                        cambiar_mapa(id_dron, pos, mapa)
+                                        #ids_drones[id_dron-1] = ids_drones[id_dron-1] + 1
+                                        msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
+                                        print(msg)
+                                        envia_mapa(msg)
+                                        
+                                    else:
+                                        if contador == idd:
+                                            print("Se ha perdido la conexion con el dron " + str(idd+1))
+                                            envia_mapa("Se ha perdido la conexion con el dron " + str(idd+1))
+                                        else:
+                                            print("ID: "+id_dron)
+                                            print(pos)
+                                            cambiar_mapa(id_dron, pos, mapa)
+                                            ids_drones[id_dron-1] = ids_drones[id_dron-1] + 1
+                                            msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
+                                            envia_mapa(msg)
+
+                                else:
+                                    print("NO SE HAN DETECTADO MAS MOVIMIENTO")
                                     comp = True
-                            else:
-                                print("NO SE HAN DETECTADO MAS MOVIMIENTO")
+                                    envia_mapa("ESPECTACULO FINALIZADO")
+                                    raise Exception()
+                                contador = contador + 1
+                            time.sleep(5)
+                            imprimir_mapa(mapa)
+                            if mapa == mapa_final:
                                 comp = True
-                                envia_mapa("ESPECTACULO FINALIZADO")
-                                raise Exception()
                         else:
                             print("CONDICIONES ADVERSAS")
                             time.sleep(3)
