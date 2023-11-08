@@ -9,6 +9,8 @@ import pickle
 from turtle import position
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
+from colorama import Fore, Back, Style, init
+
 TOPIC = 'm3'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
 TOPIC_PARES = 'p7'
@@ -46,14 +48,25 @@ def consulta_clima(ciudad):
     else:
         return False
 
-def imprimir_mapa(mapa):
-    for fila in mapa:
-        for casilla in fila:
-            if casilla == 0:
-                print('-', end=' ')  
-            else:
-                print(casilla, end=' ')  
-        print()  
+
+# Inicializa colorama para habilitar la impresión en color
+init(autoreset=True)
+
+def imprimir_mapa(mapa, pares):
+    for y, row in enumerate(mapa):
+        for x, element in enumerate(row):
+            found = False
+            for pair_value, position in pares:
+                if pair_value == element and position['x'] == x and position['y'] == y:
+                    print(Back.GREEN + str(element), end=' ')
+                    found = True
+                    break
+            if not found:
+                if element == 0:
+                    print(Back.WHITE + ' ', end=' ')
+                else:
+                    print(Back.RED + str(element), end=' ')
+        print(Style.RESET_ALL)
 
 def construir_mapa():
     mapa = [[0 for _ in range(20)] for _ in range(20)]
@@ -302,7 +315,7 @@ def main():
                                 print("ID: "+id_dron)
                                 print(pos)
                                 cambiar_mapa(id_dron, pos, mapa)
-                                imprimir_mapa(mapa)
+                                imprimir_mapa(mapa,pares)
                                 msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
                                 envia_mapa(msg)
                                 if mapa == mapa_final:
