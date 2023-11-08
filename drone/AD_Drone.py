@@ -8,6 +8,10 @@ import time
 import json
 import ast
 import pickle
+from colorama import Fore, Back, Style, init
+
+# Inicializa colorama para habilitar la impresión en color
+init(autoreset=True)
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
 TOPIC = 'mom91'  # Nombre del tópico de Kafka
@@ -114,14 +118,22 @@ def consume_pares(id_dron):
         break
     return pares
 
-def imprimir_mapa(mapa):
-    for fila in mapa:
-        for casilla in fila:
-            if casilla == 0:
-                print('-', end=' ')  
-            else:
-                print(casilla, end=' ')  
-        print()  
+def imprimir_mapa(mapa, pares):
+    for y, row in enumerate(mapa):
+        for x, element in enumerate(row):
+            found = False
+            for pair_value, position in pares:
+                if pair_value == element and position['x'] == x and position['y'] == y:
+                    print(Back.GREEN + str(element), end=' ')
+                    found = True
+                    break
+            if not found:
+                if element == 0:
+                    print(Back.WHITE + ' ', end=' ')
+                else:
+                    print(Back.RED + str(element), end=' ')
+        print(Style.RESET_ALL)
+
 
 def calcula_path(id_dron, pares):
     final = ()

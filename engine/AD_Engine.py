@@ -124,6 +124,14 @@ def leer_json(ruta):
     except FileNotFoundError:
         print(f"El archivo '{json}' no se encuentra.")
 
+def compara_mapa(mapa1, mapa2):
+    ok = True
+    for i in range(len(mapa1)):
+        for j in range(len(mapa1[0])):
+            if mapa1[i][j] != mapa2[i][j]:
+                ok = False
+    return ok
+
 def envia_pares(pares):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                              value_serializer=lambda v: str(v).encode('utf-8'))
@@ -310,7 +318,7 @@ def main():
                     ids_drones = [0] * drones_json
                     print(ids_drones[id_dron-1])
                     comp = True
-                    if mapa != mapa_final:
+                    if compara_mapa(mapa,mapa_final) == False:
                         comp = False
                     while comp == False:
                         if consulta_clima(ciudad) == True: 
@@ -349,7 +357,7 @@ def main():
                                 contador = contador + 1
                             time.sleep(5)
                             imprimir_mapa(mapa)
-                            if mapa == mapa_final:
+                            if compara_mapa(mapa, mapa_final) == True:
                                 comp = True
                         else:
                             print("CONDICIONES ADVERSAS")
