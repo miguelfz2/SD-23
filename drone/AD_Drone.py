@@ -9,11 +9,11 @@ import json
 import ast
 import pickle
 
-KAFKA_BOOTSTRAP_SERVERS = sys.argv[4]+':'sys.argv[5]  # La dirección de los brokers de Kafka
-TOPIC = 'mom901'  # Nombre del tópico de Kafka
+KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
+TOPIC = 'mov'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'pa901'
-TOPIC_MAPA = 'mapm901'
+TOPIC_PARES = 'par'
+TOPIC_MAPA = 'mapa'
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -145,20 +145,20 @@ def calcula_path(id_dron, pares):
             x += 1
             y += 1
         elif x < final[0]:
-            camino.append('E')
+            camino.append('S')
             x += 1
         elif y < final[1]:
-            camino.append('S')
+            camino.append('E')
             y += 1
         elif x > final[0] and y > final[1]:
             camino.append('NO')
             x -= 1
             y -= 1
         elif x > final[0]:
-            camino.append('O')
+            camino.append('N')
             x -= 1
         elif y > final[1]:
-            camino.append('N')
+            camino.append('O')
             y -= 1
         elif x < final[0] and y > final[1]:
             camino.append('SO')
@@ -215,6 +215,7 @@ def mueve_dron(id_dron):
         pares = consume_pares(id_dron)
     print("\n-------- MOVIMIENTO DE DRON --------")
     path = calcula_path(id_dron, pares)
+    path2 = path
     print(pares)
     lista_pares = ast.literal_eval(pares)
     drones_activos = len(lista_pares)
@@ -238,17 +239,22 @@ def mueve_dron(id_dron):
             cont = 0
             while cont < drones_activos:
                 msg = consume_mapa(id_dron)
-                print(msg)
-                cont = cont + 1
-            if msg == "ESPECTACULO FINALIZADO":
-                break
-            elif msg == "CONDICIONES ADVERSAS":
-                while msg == "CONDICIONES ADVERSAS":
-                    msg = consume_mapa(id_dron)
-                    print(msg)
+                if msg == "ESPECTACULO FINALIZADO":
+                    break
+                elif msg == "CONDICIONES ADVERSAS":
+                    while msg == "CONDICIONES ADVERSAS":
+                        msg = consume_mapa(id_dron)
+                        print(msg)
+                        path = path2
+                        time.sleep(2)
+                elif msg is None:
+                    print("ENGINE NO DISPONIBLE")
                     time.sleep(2)
-            else:
-                zeta = 1
+                else:
+                    print(msg)
+                    cont = cont + 1
+            if msg == "ESPECTACULO FINALIZADO":
+                    break
         
                 
             
@@ -262,52 +268,59 @@ def main():
         id_dron = 0
         token = ''
         conectado = False
-        while conectado == False:
-            opc = menu_inicio()
+        try:
+            while conectado == False:
+                opc = menu_inicio()
 
-            if opc == '2':
-                if token != '':
-                    conectado = envia_token(id_dron,token)
-                    mueve_dron(id_dron)
-                    seguir = True
-                    msg = ""
-                    print("DRON FINALIZADO")
-                    while seguir == True :
-                        msg = consume_mapa(id_dron)
-                        if msg != "ESPECTACULO FINALIZADO":
-                            print(msg)
-                            time.sleep(3)
-                        else:
-                            seguir = False
-                            print(msg)
-                else:
-                    print("Por favor, registrese!")
-            elif opc == '1':
-                ipRegistro = sys.argv[1]
-                puertoRegistro = int(sys.argv[3])
-                ADDR = (ipRegistro, puertoRegistro)
-                client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client.connect(ADDR)
-                opc = menu()
                 if opc == '2':
-                    edita_dron(client)
-                elif opc == '3':
-                    elimina_dron(client)
+                    if token != '':
+                        conectado = envia_token(id_dron,token)
+                        mueve_dron(id_dron)
+                        seguir = True
+                        msg = ""
+                        print("DRON FINALIZADO")
+                        while seguir == True :
+                            msg = consume_mapa(id_dron)
+                            if msg == "ESPECTACULO FINALIZADO":
+                                seguir = False
+                                print(msg)
+                            elif msg is None:
+                                print("ENGINE NO DISPONIBLE")
+                                time.sleep(2)
+                            else:
+                                print(msg)
+                                time.sleep(3)
+                    else:
+                        print("Por favor, registrese!")
                 elif opc == '1':
-                    respuesta = crea_dron(client)
-                    id_dron = respuesta.split(".")[0]
-                    token = respuesta.split(".")[1]
-                    print("Dron creado con id: "+id_dron+" y token: "+token)
+                    ipRegistro = sys.argv[5]
+                    puertoRegistro = int(sys.argv[6])
+                    ADDR = (ipRegistro, puertoRegistro)
+                    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    client.connect(ADDR)
+                    opc = menu()
+                    if opc == '2':
+                        edita_dron(client)
+                    elif opc == '3':
+                        elimina_dron(client)
+                    elif opc == '1':
+                        respuesta = crea_dron(client)
+                        id_dron = respuesta.split(".")[0]
+                        token = respuesta.split(".")[1]
+                        print("Dron creado con id: "+id_dron+" y token: "+token)
+                    else:
+                        print("OPCIÓN INCORRECTA")
+                elif opc == '3':
+                    sys.exit()
                 else:
+                    print()
                     print("OPCIÓN INCORRECTA")
-            elif opc == '3':
-                sys.exit()
-            else:
-                print()
-                print("OPCIÓN INCORRECTA")
+        except Exception: 
+            print("ERROR: NO SE PUEDO ESTABLECER LA CONEXION")
 
 if __name__ == "__main__":
     main()
+
 
 
 

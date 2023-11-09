@@ -9,18 +9,18 @@ import pickle
 from turtle import position
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
-TOPIC = 'mom901'  # Nombre del tópico de Kafka
+TOPIC = 'mov'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'pa901'
-TOPIC_MAPA = 'mapm901'
+TOPIC_PARES = 'par'
+TOPIC_MAPA = 'mapa'
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 
 # Dirección de los brokers de Kafka y nombre del tópico
-KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':'+sys.argv[4] ##PARAMETRIZAR
+KAFKA_BOOTSTRAP_SERVERS = sys.argv[3] + ":" + sys.argv[4] ##PARAMETRIZAR
 
 # Maximo numero de drones
-MAX_CONEXIONES = sys.argv[2] ##PARAMETRIZAR
+MAX_CONEXIONES = int(sys.argv[2]) ##PARAMETRIZAR
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -32,18 +32,29 @@ def verificar_registro(token):
     return result is not None
 
 # Función que consulta al servidor de clima la temperatura de la zona
+import sys
+import socket
+
 def consulta_clima(ciudad):
-    ip_clima = sys.argv[3]
-    port_clima = sys.argv[5]
-    obj = socket.socket()
-    obj.connect((ip_clima,port_clima))
-    msg = ciudad.encode('utf-8')
-    obj.send(msg)
-    respuesta = obj.recv(4096)
-    if int(respuesta.decode('utf-8')) > 0:
-         return True
-    else:
+    try:
+        ip_clima = sys.argv[3]
+        port_clima = int(sys.argv[5])
+        with socket.socket() as obj:
+            obj.connect((ip_clima, port_clima))
+            msg = ciudad.encode('utf-8')
+            obj.send(msg)
+            respuesta = obj.recv(4096)
+            if int(respuesta.decode('utf-8')) > 0:
+                return True
+            else:
+                return False
+    except (ConnectionRefusedError, TimeoutError):
+        print("No se pudo conectar con el servidor.")
         return False
+    except Exception as e:
+        print(f"Ocurrió un error: {e}")
+        return False
+
 
 def imprimir_mapa(mapa):
     for fila in mapa:
@@ -269,9 +280,11 @@ def menu():
 
 # Configurar el socket del servidor
 HOST = 'localhost'  # Dirección IP del servidor
-PORT = sys.argv[1]         # Puerto del servidor PARAMETRIZAR
+PORT = int(sys.argv[1])        # Puerto del servidor PARAMETRIZAR
 
 def main():
+    if len(sys.argv[1:]) < 5:
+        sys.exit(1)
     mapa = construir_mapa()
     mapa_final = construir_mapa()
     limpiar_mapa(mapa)
@@ -280,10 +293,9 @@ def main():
     for id_dron, pos_f in pares:
         x = pos_f['x']
         y = pos_f['y']
-        pos_final = (y, x)
+        pos_final = (x, y)
         id_dron = str(id_dron)
         cambiar_mapa(id_dron, pos_final, mapa_final)
-
     drones_json = len(pares)
     if MAX_CONEXIONES < drones_json:
         print("ERROR: HAY MENOS CONEXCIONES QUE DRONES PARA EL ESPECTACULO")
@@ -319,8 +331,8 @@ def main():
                 while opc != '1' and opc != '2':
                     opc = menu()
                 if opc == '1':
+                    ids = [tupla[0] for tupla in pares]
                     envia_pares(pares)
-                    ids_drones = [0] * drones_json
                     comp = False
                     while comp == False:
                         if consulta_clima(ciudad) == True: 
@@ -329,25 +341,10 @@ def main():
                             while contador < drones_act:        
                                 id_dron, pos = calcular_pos(mapa)
                                 if id_dron is not None and pos is not None:
-                                    idd = comprueba_drones(ids_drones)
-                                    if idd == 0:
-                                        cambiar_mapa(id_dron, pos, mapa)
-                                        #ids_drones[id_dron-1] = ids_drones[id_dron-1] + 1
-                                        msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
-                                        print(msg)
-                                        envia_mapa(msg)
-                                        
-                                    else:
-                                        if contador == idd:
-                                            print("Se ha perdido la conexion con el dron " + str(idd+1))
-                                            envia_mapa("Se ha perdido la conexion con el dron " + str(idd+1))
-                                        else:
-                                            print("ID: "+id_dron)
-                                            print(pos)
-                                            cambiar_mapa(id_dron, pos, mapa)
-                                            ids_drones[id_dron-1] = ids_drones[id_dron-1] + 1
-                                            msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
-                                            envia_mapa(msg)
+                                    cambiar_mapa(id_dron, pos, mapa)
+                                    msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
+                                    print(msg)
+                                    envia_mapa(msg)
 
                                 else:
                                     print("UN DRON HA FINALIZADO")
@@ -359,6 +356,7 @@ def main():
                         else:
                             print("CONDICIONES ADVERSAS")
                             time.sleep(3)
+                            mapa = construir_mapa()
                             envia_mapa("CONDICIONES ADVERSAS")
                     msg = "ESPECTACULO FINALIZADO"
                     envia_mapa(msg)
@@ -377,4 +375,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

@@ -1,8 +1,12 @@
 import socket
+import sys
 
 HOST = 'localhost'
-PORT = sys.argv[1]
 
+if len(sys.argv[1:]) < 1:
+    print("Error: formato: script.py <puerto>")
+    sys.exit(1)
+PORT = int(sys.argv[1])
 my_socket=socket.socket()
 my_socket.bind((HOST, PORT))
 my_socket.listen(5)
@@ -21,6 +25,7 @@ def buscar_bd(ciudad):
         print("ERROR: NO EXISTE LA BD")
 
     return resultado
+
 
 print ("Servidor clima creado y a la escucha en ", HOST, " ", PORT )
 
