@@ -17,10 +17,10 @@ TOPIC_MAPA = 'mapm901'
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 
 # Dirección de los brokers de Kafka y nombre del tópico
-KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092' ##PARAMETRIZAR
+KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':'+sys.argv[4] ##PARAMETRIZAR
 
 # Maximo numero de drones
-MAX_CONEXIONES = 5 ##PARAMETRIZAR
+MAX_CONEXIONES = sys.argv[2] ##PARAMETRIZAR
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -33,8 +33,8 @@ def verificar_registro(token):
 
 # Función que consulta al servidor de clima la temperatura de la zona
 def consulta_clima(ciudad):
-    ip_clima = 'localhost'
-    port_clima = 8010
+    ip_clima = sys.argv[3]
+    port_clima = sys.argv[5]
     obj = socket.socket()
     obj.connect((ip_clima,port_clima))
     msg = ciudad.encode('utf-8')
@@ -269,7 +269,7 @@ def menu():
 
 # Configurar el socket del servidor
 HOST = 'localhost'  # Dirección IP del servidor
-PORT = 12345         # Puerto del servidor PARAMETRIZAR
+PORT = sys.argv[1]         # Puerto del servidor PARAMETRIZAR
 
 def main():
     mapa = construir_mapa()

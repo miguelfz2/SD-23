@@ -9,7 +9,7 @@ import json
 import ast
 import pickle
 
-KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
+KAFKA_BOOTSTRAP_SERVERS = sys.argv[4]+':'sys.argv[5]  # La dirección de los brokers de Kafka
 TOPIC = 'mom901'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
 TOPIC_PARES = 'pa901'
@@ -283,8 +283,8 @@ def main():
                 else:
                     print("Por favor, registrese!")
             elif opc == '1':
-                ipRegistro = sys.argv[5]
-                puertoRegistro = int(sys.argv[6])
+                ipRegistro = sys.argv[1]
+                puertoRegistro = int(sys.argv[3])
                 ADDR = (ipRegistro, puertoRegistro)
                 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 client.connect(ADDR)

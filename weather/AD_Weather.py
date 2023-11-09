@@ -1,7 +1,7 @@
 import socket
 
 HOST = 'localhost'
-PORT = 8010
+PORT = sys.argv[1]
 
 my_socket=socket.socket()
 my_socket.bind((HOST, PORT))
