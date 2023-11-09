@@ -8,16 +8,12 @@ import time
 import json
 import ast
 import pickle
-from colorama import Fore, Back, Style, init
-
-# Inicializa colorama para habilitar la impresión en color
-init(autoreset=True)
 
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
-TOPIC = 'mom91'  # Nombre del tópico de Kafka
+TOPIC = 'mom901'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'pa101'
-TOPIC_MAPA = 'mapm81'
+TOPIC_PARES = 'pa901'
+TOPIC_MAPA = 'mapm901'
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -108,7 +104,7 @@ def consume_comienzo(id_dron):
 
 def consume_pares(id_dron):
     # Configurar el consumidor de Kafka
-    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, auto_offset_reset='latest', group_id='pares-group-'+id_dron)
+    consumer = KafkaConsumer(TOPIC_PARES, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,enable_auto_commit=True, auto_offset_reset='latest', group_id='pares-group-'+id_dron)
     print(f"Esperando posiciones finales del dron en el tópico '{TOPIC_PARES}'...")
     pares = ""
     # Consumir mensajes del tópico
@@ -118,22 +114,14 @@ def consume_pares(id_dron):
         break
     return pares
 
-def imprimir_mapa(mapa, pares):
-    for y, row in enumerate(mapa):
-        for x, element in enumerate(row):
-            found = False
-            for pair_value, position in pares:
-                if pair_value == element and position['x'] == x and position['y'] == y:
-                    print(Back.GREEN + str(element), end=' ')
-                    found = True
-                    break
-            if not found:
-                if element == 0:
-                    print(Back.WHITE + ' ', end=' ')
-                else:
-                    print(Back.RED + str(element), end=' ')
-        print(Style.RESET_ALL)
-
+def imprimir_mapa(mapa):
+    for fila in mapa:
+        for casilla in fila:
+            if casilla == 0:
+                print('-', end=' ')  
+            else:
+                print(casilla, end=' ')  
+        print()  
 
 def calcula_path(id_dron, pares):
     final = ()
@@ -215,7 +203,6 @@ def envia_movimiento(movimiento):
                              value_serializer=lambda v: str(v).encode('utf-8'))
 
     # Enviar el movimiento al tópico 'movimientos-dron'
-    print("MOV: "+ movimiento)
     producer.send(TOPIC, value=movimiento)
     producer.flush()
 
@@ -261,7 +248,7 @@ def mueve_dron(id_dron):
                     print(msg)
                     time.sleep(2)
             else:
-                x = 1
+                zeta = 1
         
                 
             
@@ -286,12 +273,12 @@ def main():
                     msg = ""
                     print("DRON FINALIZADO")
                     while seguir == True :
+                        msg = consume_mapa(id_dron)
                         if msg != "ESPECTACULO FINALIZADO":
-                            msg = consume_mapa(id_dron)
+                            print(msg)
                             time.sleep(3)
                         else:
                             seguir = False
-                            msg = consume_mapa(id_dron)
                             print(msg)
                 else:
                     print("Por favor, registrese!")

@@ -9,10 +9,10 @@ import pickle
 from turtle import position
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
-TOPIC = 'mom91'  # Nombre del tópico de Kafka
+TOPIC = 'mom901'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec'
-TOPIC_PARES = 'pa101'
-TOPIC_MAPA = 'mapm81'
+TOPIC_PARES = 'pa901'
+TOPIC_MAPA = 'mapm901'
 # Ruta de la base de datos
 DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 
@@ -57,6 +57,23 @@ def imprimir_mapa(mapa):
 def construir_mapa():
     mapa = [[0 for _ in range(20)] for _ in range(20)]
     return mapa
+
+def son_mapas_iguales(mapa1, mapa2):
+    filas = len(mapa1)
+    columnas = len(mapa1[0])
+    comp = True
+    # Verificar las dimensiones de ambos mapas
+    if len(mapa2) != filas or len(mapa2[0]) != columnas:
+        comp = False
+    
+    # Comparar los valores en cada posición de los mapas
+    for i in range(filas):
+        for j in range(columnas):
+            if mapa1[i][j] != mapa2[i][j]:
+                comp = False
+    
+    # Si no se encontraron diferencias, los mapas son igualesç
+    return comp
 
 #Devuelve el mapa con el cambio de posicion dado
 def cambiar_mapa(dron, posicion, mapa):
@@ -124,14 +141,6 @@ def leer_json(ruta):
     except FileNotFoundError:
         print(f"El archivo '{json}' no se encuentra.")
 
-def compara_mapa(mapa1, mapa2):
-    ok = True
-    for i in range(len(mapa1)):
-        for j in range(len(mapa1[0])):
-            if mapa1[i][j] != mapa2[i][j]:
-                ok = False
-    return ok
-
 def envia_pares(pares):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                              value_serializer=lambda v: str(v).encode('utf-8'))
@@ -171,7 +180,7 @@ def leer_kafka():
     start_time = time.time()
     mensaje_recibido = None
 
-    while time.time() - start_time < 20:
+    while time.time() - start_time < 3:
         records = consumer.poll(timeout_ms=5000, max_records=1)
         for record in records.values():
             for message in record:
@@ -211,7 +220,6 @@ def calcular_pos(mapa):
     res = respuesta.split(",")
     id_dron = res[0]
     movimiento = res[1]
-    print("El id es: "+id_dron)
     pos = leer_id_mapa(id_dron, mapa)
     print(f"Nuevo movimiento del dron: {movimiento}")
     cambiar_mapa(0, pos, mapa)
@@ -246,7 +254,6 @@ def comprueba_drones(ids):
     
     tam = len(ids)
     tam = tam * 2
-    print(tam)
     for id_d in ids:
         if id_d + tam < mayor:
             idd = id_d
@@ -274,6 +281,7 @@ def main():
         x = pos_f['x']
         y = pos_f['y']
         pos_final = (y, x)
+        id_dron = str(id_dron)
         cambiar_mapa(id_dron, pos_final, mapa_final)
 
     drones_json = len(pares)
@@ -311,26 +319,18 @@ def main():
                 while opc != '1' and opc != '2':
                     opc = menu()
                 if opc == '1':
-                    ok_thread = threading.Thread(target=envia_OK, args=(ciudad,))
-                    ok_thread.start()  
-                    clima = consulta_clima(ciudad)  
                     envia_pares(pares)
                     ids_drones = [0] * drones_json
-                    print(ids_drones[id_dron-1])
-                    comp = True
-                    if compara_mapa(mapa,mapa_final) == False:
-                        comp = False
+                    comp = False
                     while comp == False:
                         if consulta_clima(ciudad) == True: 
                             contador = 0
-                            drones_act = 1 #drones_json 
+                            drones_act = drones_json 
                             while contador < drones_act:        
                                 id_dron, pos = calcular_pos(mapa)
                                 if id_dron is not None and pos is not None:
                                     idd = comprueba_drones(ids_drones)
                                     if idd == 0:
-                                        print("ID: "+id_dron)
-                                        print(pos)
                                         cambiar_mapa(id_dron, pos, mapa)
                                         #ids_drones[id_dron-1] = ids_drones[id_dron-1] + 1
                                         msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
@@ -350,15 +350,12 @@ def main():
                                             envia_mapa(msg)
 
                                 else:
-                                    print("NO SE HAN DETECTADO MAS MOVIMIENTO")
-                                    comp = True
-                                    envia_mapa("ESPECTACULO FINALIZADO")
-                                    raise Exception()
+                                    print("UN DRON HA FINALIZADO")
+                                    envia_mapa("UN DRON HA FINALIZADO")
                                 contador = contador + 1
-                            time.sleep(5)
+                            time.sleep(2)
                             imprimir_mapa(mapa)
-                            if compara_mapa(mapa, mapa_final) == True:
-                                comp = True
+                            comp = son_mapas_iguales(mapa, mapa_final)
                         else:
                             print("CONDICIONES ADVERSAS")
                             time.sleep(3)
@@ -376,6 +373,7 @@ def main():
     finally:
         # Cerrar el socket del servidor al finalizar
         server_socket.close()
+        print("FINNN")
 
 if __name__ == "__main__":
     main()
