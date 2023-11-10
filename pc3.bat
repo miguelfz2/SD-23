@@ -11,8 +11,8 @@ if not "%6"=="" (
 REM Eliminar el primer argumento (el número de veces)
 shift
 
-REM Bucle para ejecutar el script Python
+REM Bucle para abrir terminales y ejecutar el script Python
 for /l %%i in (1,1,%veces_a_ejecutar%) do (
     echo Ejecución número %%i
-    python AD_Drone.py %*
+    start /B cmd /c "python AD_Drone.py %*"
 )
