@@ -6,15 +6,18 @@ import time
 import json
 import sys
 import pickle
-from turtle import position
+import ssl
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
-TOPIC = 'mov'  # Nombre del tópico de Kafka
-TOPIC_OK = 'espec'
-TOPIC_PARES = 'par'
-TOPIC_MAPA = 'mapa'
+
+FORMATO = 'utf-8'
+
+TOPIC = 'mov2'  # Nombre del tópico de Kafka
+TOPIC_OK = 'espec2'
+TOPIC_PARES = 'par2'
+TOPIC_MAPA = 'mapa2'
 # Ruta de la base de datos
-DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
+DB_FILE = r'/home/mfz/Escritorio/SD/SD-23/registry/drones.db'
 
 # Dirección de los brokers de Kafka y nombre del tópico
 KAFKA_BOOTSTRAP_SERVERS = sys.argv[3] + ":" + sys.argv[4] ##PARAMETRIZAR
@@ -32,8 +35,6 @@ def verificar_registro(token):
     return result is not None
 
 # Función que consulta al servidor de clima la temperatura de la zona
-import sys
-import socket
 
 def consulta_clima(ciudad):
     try:
@@ -124,11 +125,16 @@ def handle_client(client_socket, addr):
     
     # Verificar el registro en la base de datos
     if verificar_registro(token):
-        # Cliente registrado, enviar mensaje de OK
-        client_socket.send('OK'.encode('utf-8'))
+        try:
+            # Cliente registrado, enviar mensaje de OK
+            msj = 'OK'
+            client_socket.send(msj.encode(FORMATO))
+        except Exception as e:
+            print(f"Error de SSL: {e}")
     else:
         # Cliente no registrado, enviar mensaje para registrarse
-        client_socket.send('Por favor, regístrese.'.encode('utf-8'))
+        msj = 'Por favor, regístrese.'
+        client_socket.send(msj.encode(FORMATO))
     
     # Cerrar la conexión con el cliente
     client_socket.close()
@@ -300,7 +306,11 @@ def main():
     if MAX_CONEXIONES < drones_json:
         print("ERROR: HAY MENOS CONEXCIONES QUE DRONES PARA EL ESPECTACULO")
         sys.exit(1)
-    # Crear un socket de servidor
+
+    # Crear un socket seguro
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain(certfile='claves/certificado_engine.pem', keyfile="claves/clave_engine.key")
+
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
     server_socket.listen(5)
@@ -313,9 +323,10 @@ def main():
         while True:
             # Esperar a que un cliente se conecte
             client_socket, addr = server_socket.accept()
+            ssl_socket = ssl_context.wrap_socket(client_socket, server_side=True)
 
             # Crear un nuevo subproceso para manejar la conexión del cliente
-            client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
+            client_thread = threading.Thread(target=handle_client, args=(ssl_socket, addr))
             client_thread.start()
             #Hilo para el servidor de clima
             clima_thread = threading.Thread(target=consulta_clima, args=(ciudad,))

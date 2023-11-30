@@ -8,12 +8,14 @@ import time
 import json
 import ast
 import pickle
+import ssl
+import requests
 
-KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'  # La dirección de los brokers de Kafka
-TOPIC = 'mov'  # Nombre del tópico de Kafka
-TOPIC_OK = 'espec'
-TOPIC_PARES = 'par'
-TOPIC_MAPA = 'mapa'
+KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':'+sys.argv[4]  # La dirección de los brokers de Kafka
+TOPIC = 'mov2'  # Nombre del tópico de Kafka
+TOPIC_OK = 'espec2'
+TOPIC_PARES = 'par2'
+TOPIC_MAPA = 'mapa2'
 
 FORMATO = 'utf-8'
 CABECERA = 64
@@ -30,6 +32,17 @@ def menu_inicio():
     print("---------------------------------")
     print('1. Gestor de drones')
     print('2. Unirse a espectáculo')
+    print('3. Salir')
+
+    return input('Elige una opción: ')
+
+def menu_sock_api():
+    print()
+    print("---------------------------------")
+    print('--------Art With Drones----------')
+    print("---------------------------------")
+    print('1. Unirse por socket')
+    print('2. Unirse por API')
     print('3. Salir')
 
     return input('Elige una opción: ')
@@ -53,11 +66,42 @@ def crea_dron(client):
     print("---------------------------------")
     alias = input('Introduce el alias del dron: ')
     #ENVIAMOS EL ALIAS AL SOCKET
-    send("1."+alias,client)
+    cadena = "1."+alias
+    client.send(cadena.encode(FORMATO))
     respuesta = client.recv(2048).decode(FORMATO)
+
     print("Tu token es "+respuesta.split(".")[1])
     return respuesta
 
+def crea_dron_api(ip_api):
+    try:
+        print("---------------------------------")
+        print('--------CREACION DE DRON---------')
+        print("---------------------------------")
+        alias = input('Introduce el alias del dron: ')
+
+        print(ip_api)
+        url = f'https://{ip_api}:8234/registrar'
+        datos = {'data': alias}
+
+        requests.packages.urllib3.disable_warnings()
+        respuesta_api = requests.post(url, data=datos, verify=False)
+        respuesta_api.raise_for_status()
+        respuesta_json = respuesta_api.json()
+
+        token = respuesta_json.get("token_acceso")
+        id_dr = respuesta_json.get("id_dron")
+
+        if token and id_dr:
+            print("Tu token es " + str(token))
+            return f"{token}.{id_dr}"
+        else:
+            print("La respuesta no contiene token_acceso o id_dron.")
+            return None
+
+    except Exception as e:
+        print("Error en la solicitud:", e)
+        return None
 
 def edita_dron(client):
     print("---------------------------------")
@@ -66,7 +110,8 @@ def edita_dron(client):
     alias = input('Introduce el alias del dron a editar: ')
     nuevo_alias = input('Introduce el nuevo alias: ')
     #ENVIAMOS EL ALIAS AL SOCKET
-    send("2."+alias+"."+nuevo_alias,client)
+    cadena = "2."+alias+"."+nuevo_alias
+    client.send(cadena.encode(FORMATO))
     respuesta = client.recv(2048).decode(FORMATO)
 
 def elimina_dron(client):
@@ -75,7 +120,8 @@ def elimina_dron(client):
     print("---------------------------------")
     alias = input('Introduce el alias del dron a eliminar: ')
     #ENVIAMOS EL ALIAS AL SOCKET
-    send("3."+alias,client)
+    cadena = "3."+alias
+    client.send(cadena.encode(FORMATO))
     respuesta = client.recv(2048).decode(FORMATO)
 
 def envia_token(id_dron,token):
@@ -83,8 +129,13 @@ def envia_token(id_dron,token):
     puertoEngine = int(sys.argv[2])
     ADDR_eng = (ipEngine,puertoEngine)
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(ADDR_eng)
-    send(token,client)
+
+    ssl_context = ssl._create_unverified_context()
+    ssl_conn = ssl_context.wrap_socket(client, server_hostname=ipEngine)
+    ssl_conn.connect(ADDR_eng)
+
+    send(token,ssl_conn)
+
     respuesta = client.recv(2048).decode(FORMATO)
     print(respuesta)
     if respuesta == "OK":
@@ -293,21 +344,54 @@ def main():
                     else:
                         print("Por favor, registrese!")
                 elif opc == '1':
-                    ipRegistro = sys.argv[5]
-                    puertoRegistro = int(sys.argv[6])
-                    ADDR = (ipRegistro, puertoRegistro)
-                    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    client.connect(ADDR)
-                    opc = menu()
-                    if opc == '2':
-                        edita_dron(client)
+                    opc = menu_sock_api()
+                    if opc == '1':
+                        ipRegistro = sys.argv[5]
+                        puertoRegistro = int(sys.argv[6])
+                        ADDR = (ipRegistro, puertoRegistro)
+                        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        try:
+                            ssl_context = ssl._create_unverified_context()
+                            ssl_conn = ssl_context.wrap_socket(client, server_hostname=ipRegistro)
+                            ssl_conn.connect(ADDR)
+                        except socket.error as err:
+                            print('ERROR EN EL SOCKET %s' % (err))
+                        except Exception as e:
+                            print('ERROR: ' + str(e))
+
+                        opc = menu()
+
+                        if opc == '2':
+                            edita_dron(ssl_conn)
+                        elif opc == '3':
+                            elimina_dron(ssl_conn)
+                        elif opc == '1':
+                            respuesta = crea_dron(ssl_conn)
+                            id_dron = respuesta.split(".")[0]
+                            token = respuesta.split(".")[1]
+                            print("Dron creado con id: "+id_dron+" y token: "+token)
+                        else:
+                            print("OPCIÓN INCORRECTA")
+
+                    elif opc =='2':
+                        opc = menu()
+
+                        if opc == '1':
+                            #CREA DRON
+                            respuesta = crea_dron_api(sys.argv[5])
+                            id_dron = respuesta.split(".")[0]
+                            token = respuesta.split(".")[1]
+                            print("Dron creado con id: "+id_dron+" y token: "+token)
+                        elif opc == '2':
+                            #EDITA DRON
+                            print("Dron editado")
+                        elif opc == '3':
+                            #BORRA DRON
+                            print("Dron eliminado")
+                        else:
+                            print("OPCIÓN INCORRECTA")
                     elif opc == '3':
-                        elimina_dron(client)
-                    elif opc == '1':
-                        respuesta = crea_dron(client)
-                        id_dron = respuesta.split(".")[0]
-                        token = respuesta.split(".")[1]
-                        print("Dron creado con id: "+id_dron+" y token: "+token)
+                        sys.exit()
                     else:
                         print("OPCIÓN INCORRECTA")
                 elif opc == '3':
@@ -315,8 +399,8 @@ def main():
                 else:
                     print()
                     print("OPCIÓN INCORRECTA")
-        except Exception: 
-            print("ERROR: NO SE PUEDO ESTABLECER LA CONEXION")
+        except Exception as e:
+            print("ERROR: NO SE PUEDO ESTABLECER LA CONEXION: "+str(e))
 
 if __name__ == "__main__":
     main()

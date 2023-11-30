@@ -3,8 +3,14 @@ import socket
 import threading
 import datetime
 import sys
+import ssl
+
+from flask import Flask, jsonify, request, send_file
+from modulefinder import Module
 
 FORMATO = 'utf-8'
+
+app = Flask(__name__)
 
 def obtener_conexion():
     return sqlite3.connect('drones.db')  # Base de datos
@@ -55,7 +61,7 @@ def obtener_id_por_alias(alias, cursor):
 def editar_alias(alias, nuevo_alias, cursor):
     dron_id = obtener_id_por_alias(alias, cursor)
     if dron_id:
-        cursor.execute('UPDATE drones SET alias = ? WHERE id = ?', (nuevo_alias, dron_id))
+        cursor.execute('UPDATE dron SET alias = ? WHERE id = ?', (nuevo_alias, dron_id))
         return f"Alias del Dron ID '{dron_id}' editado a '{nuevo_alias}'"
     else:
         return "Dron no encontrado con el alias proporcionado."
@@ -80,7 +86,7 @@ def handle_client(client_socket):
 
     print(f"Conexión establecida con el dron {alias}")
     print(f"Opcion {opcion}")
-    
+
     if opcion == "1":
         token_acceso = registrar_dron(alias, cursor)
         print(f"Dron registrado con ID '{obtener_ultimo_id(cursor)}', Alias '{alias}'.")
@@ -111,15 +117,47 @@ except ValueError:
     print("Por favor, introduce un número de puerto válido.")
     sys.exit(1)
 
+@app.route('/registrar', methods=['POST'])
+def insertar_dron_api():
+    try:
+        ip = request.remote_addr
+
+        alias = request.args.get('data')
+        id_dron = obtener_ultimo_id(cursor)
+        token_acceso = registrar_dron(alias, cursor)
+
+        # Enviar una respuesta al cliente
+        respuesta = {
+            'id_dron': id_dron,
+            'token_acceso': token_acceso
+        }
+        return jsonify(respuesta)
+
+    except Exception as e:
+        # Manejar errores y enviar una respuesta de error al cliente si es necesario
+        return jsonify({'error': str(e)}), 500
+
+def handle_api():
+    try:
+        app.run(debug=False, port=8234, host="0.0.0.0", ssl_context=('claves/certificado_registro.pem','claves/clave_registro.key'))
+    except Exception as e:
+        print(e)
+
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+context.load_cert_chain(certfile='claves/certificado_registro.pem', keyfile="claves/clave_registro.key")
+
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_host = 'localhost'  
+server_host = 'localhost'
 server_socket.bind((server_host, server_port))
 server_socket.listen(5)
 
 borrar_db()
 print(f"Esperando solicitudes de registro en {server_host}:{server_port}...")
-
 while True:
     client_socket, client_address = server_socket.accept()
-    client_thread = threading.Thread(target=handle_client, args=(client_socket,))
+    ssl_socket = context.wrap_socket(client_socket, server_side=True)
+
+    client_thread = threading.Thread(target=handle_client, args=(ssl_socket,))
+    api_thread = threading.Thread(target=handle_api, args=[])
     client_thread.start()
+    api_thread.start()
