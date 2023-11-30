@@ -50,6 +50,7 @@ def registrar_dron(alias, cursor):
     nuevo_id = ultimo_id + 1
     token_acceso = generar_token(nuevo_id)
     nuevo_dron = (nuevo_id, alias, token_acceso)
+    print("Insertando dron con id: "+str(nuevo_id)+" alias: "+alias+" token: "+token_acceso)
     cursor.execute('INSERT INTO dron (id, alias, token) VALUES (?, ?, ?)', nuevo_dron)
     return token_acceso
 
@@ -121,16 +122,42 @@ except ValueError:
 def insertar_dron_api():
     try:
         ip = request.remote_addr
-
+        # Establecer una nueva conexión y cursor para cada hilo
+        conexion = obtener_conexion()
+        cursor = obtener_cursor(conexion)
         alias = request.args.get('data')
-        id_dron = obtener_ultimo_id(cursor)
         token_acceso = registrar_dron(alias, cursor)
+        id_dron = obtener_ultimo_id(cursor)
 
         # Enviar una respuesta al cliente
         respuesta = {
             'id_dron': id_dron,
             'token_acceso': token_acceso
         }
+        return jsonify(respuesta)
+
+    except Exception as e:
+        print(e)
+        # Manejar errores y enviar una respuesta de error al cliente si es necesario
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/editar', methods=['POST'])
+def editar_dron_api():
+    try:
+        ip = request.remote_addr
+        # Establecer una nueva conexión y cursor para cada hilo
+        conexion = obtener_conexion()
+        cursor = obtener_cursor(conexion)
+        alias = request.args.get('data')
+        nuevo = request.args.get('nuevo')
+        id_dron = obtener_ultimo_id(cursor)
+        msg = editar_alias(alias, nuevo_alias, cursor)
+
+        # Enviar una respuesta al cliente
+        respuesta = {
+            'mensaje': msg,
+        }
+        print(respuesta)
         return jsonify(respuesta)
 
     except Exception as e:
@@ -158,6 +185,6 @@ while True:
     ssl_socket = context.wrap_socket(client_socket, server_side=True)
 
     client_thread = threading.Thread(target=handle_client, args=(ssl_socket,))
-    api_thread = threading.Thread(target=handle_api, args=[])
     client_thread.start()
+    api_thread = threading.Thread(target=handle_api, args=[])
     api_thread.start()

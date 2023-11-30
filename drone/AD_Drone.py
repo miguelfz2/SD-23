@@ -88,13 +88,11 @@ def crea_dron_api(ip_api):
         respuesta_api = requests.post(url, data=datos, verify=False)
         respuesta_api.raise_for_status()
         respuesta_json = respuesta_api.json()
-
         token = respuesta_json.get("token_acceso")
         id_dr = respuesta_json.get("id_dron")
 
         if token and id_dr:
-            print("Tu token es " + str(token))
-            return f"{token}.{id_dr}"
+            return f"{id_dr}.{token}"
         else:
             print("La respuesta no contiene token_acceso o id_dron.")
             return None
@@ -105,7 +103,7 @@ def crea_dron_api(ip_api):
 
 def edita_dron(client):
     print("---------------------------------")
-    print('--------CREACION DE DRON---------')
+    print('--------EDICION DE DRON---------')
     print("---------------------------------")
     alias = input('Introduce el alias del dron a editar: ')
     nuevo_alias = input('Introduce el nuevo alias: ')
@@ -113,6 +111,34 @@ def edita_dron(client):
     cadena = "2."+alias+"."+nuevo_alias
     client.send(cadena.encode(FORMATO))
     respuesta = client.recv(2048).decode(FORMATO)
+
+def edita_dron_api(ip_api):
+    try:
+        print("---------------------------------")
+        print('--------EDICION DE DRON---------')
+        print("---------------------------------")
+        alias = input('Introduce el alias del dron a editar: ')
+        nuevo_alias = input('Introduce el nuevo alias: ')
+
+        print(ip_api)
+        url = f'https://{ip_api}:8234/editar'
+        datos = {'data': alias, 'nuevo': nuevo_alias}
+
+        requests.packages.urllib3.disable_warnings()
+        respuesta_api = requests.post(url, data=datos, verify=False)
+        respuesta_api.raise_for_status()
+        respuesta_json = respuesta_api.json()
+        msg = respuesta_json.get("mensaje")
+
+        if msg:
+            return f"{msg}"
+        else:
+            print("La respuesta es nula.")
+            return None
+
+    except Exception as e:
+        print("Error en la solicitud:", e)
+        return None
 
 def elimina_dron(client):
     print("---------------------------------")
