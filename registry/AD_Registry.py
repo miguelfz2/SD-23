@@ -46,12 +46,15 @@ def generar_token(id):
     return token
 
 def registrar_dron(alias, cursor):
-    ultimo_id = obtener_ultimo_id(cursor)
-    nuevo_id = ultimo_id + 1
-    token_acceso = generar_token(nuevo_id)
-    nuevo_dron = (nuevo_id, alias, token_acceso)
-    print("Insertando dron con id: "+str(nuevo_id)+" alias: "+alias+" token: "+token_acceso)
-    cursor.execute('INSERT INTO dron (id, alias, token) VALUES (?, ?, ?)', nuevo_dron)
+    try:
+        ultimo_id = obtener_ultimo_id(cursor)
+        nuevo_id = ultimo_id + 1
+        token_acceso = generar_token(nuevo_id)
+        nuevo_dron = (nuevo_id, alias, token_acceso)
+        cursor.execute('INSERT INTO dron (id, alias, token) VALUES (?, ?, ?)', nuevo_dron)
+        #cursor.connection.commit()
+    except Exception as e:
+        print(e)
     return token_acceso
 
 def obtener_id_por_alias(alias, cursor):
@@ -134,6 +137,9 @@ def insertar_dron_api():
             'id_dron': id_dron,
             'token_acceso': token_acceso
         }
+        conexion.commit()
+        conexion.close()
+
         return jsonify(respuesta)
 
     except Exception as e:
@@ -141,7 +147,7 @@ def insertar_dron_api():
         # Manejar errores y enviar una respuesta de error al cliente si es necesario
         return jsonify({'error': str(e)}), 500
 
-@app.route('/editar', methods=['POST'])
+@app.route('/editar', methods=['PUT'])
 def editar_dron_api():
     try:
         ip = request.remote_addr
@@ -151,13 +157,39 @@ def editar_dron_api():
         alias = request.args.get('data')
         nuevo = request.args.get('nuevo')
         id_dron = obtener_ultimo_id(cursor)
-        msg = editar_alias(alias, nuevo_alias, cursor)
+        msg = editar_alias(alias, nuevo, cursor)
 
         # Enviar una respuesta al cliente
         respuesta = {
             'mensaje': msg,
         }
-        print(respuesta)
+        conexion.commit()
+        conexion.close()
+
+        return jsonify(respuesta)
+
+    except Exception as e:
+        # Manejar errores y enviar una respuesta de error al cliente si es necesario
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/eliminar', methods=['DELETE'])
+def eliminar_dron_api():
+    try:
+        ip = request.remote_addr
+        # Establecer una nueva conexión y cursor para cada hilo
+        conexion = obtener_conexion()
+        cursor = obtener_cursor(conexion)
+        alias = request.args.get('data')
+        msg = eliminar_dron(alias, cursor)
+
+        # Enviar una respuesta al cliente
+        respuesta = {
+            'mensaje': msg,
+        }
+        conexion.commit()
+        conexion.close()
+
         return jsonify(respuesta)
 
     except Exception as e:
@@ -180,11 +212,12 @@ server_socket.listen(5)
 
 borrar_db()
 print(f"Esperando solicitudes de registro en {server_host}:{server_port}...")
+api_thread = threading.Thread(target=handle_api, args=[])
+api_thread.start()
+
 while True:
     client_socket, client_address = server_socket.accept()
     ssl_socket = context.wrap_socket(client_socket, server_side=True)
 
     client_thread = threading.Thread(target=handle_client, args=(ssl_socket,))
     client_thread.start()
-    api_thread = threading.Thread(target=handle_api, args=[])
-    api_thread.start()

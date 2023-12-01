@@ -81,11 +81,10 @@ def crea_dron_api(ip_api):
         alias = input('Introduce el alias del dron: ')
 
         print(ip_api)
-        url = f'https://{ip_api}:8234/registrar'
-        datos = {'data': alias}
+        url = f'https://{ip_api}:8234/registrar?data='+alias
 
         requests.packages.urllib3.disable_warnings()
-        respuesta_api = requests.post(url, data=datos, verify=False)
+        respuesta_api = requests.post(url, verify=False)
         respuesta_api.raise_for_status()
         respuesta_json = respuesta_api.json()
         token = respuesta_json.get("token_acceso")
@@ -121,11 +120,10 @@ def edita_dron_api(ip_api):
         nuevo_alias = input('Introduce el nuevo alias: ')
 
         print(ip_api)
-        url = f'https://{ip_api}:8234/editar'
-        datos = {'data': alias, 'nuevo': nuevo_alias}
+        url = f'https://{ip_api}:8234/editar?data='+alias+'&nuevo='+nuevo_alias
 
         requests.packages.urllib3.disable_warnings()
-        respuesta_api = requests.post(url, data=datos, verify=False)
+        respuesta_api = requests.put(url, verify=False)
         respuesta_api.raise_for_status()
         respuesta_json = respuesta_api.json()
         msg = respuesta_json.get("mensaje")
@@ -149,6 +147,32 @@ def elimina_dron(client):
     cadena = "3."+alias
     client.send(cadena.encode(FORMATO))
     respuesta = client.recv(2048).decode(FORMATO)
+
+def elimina_dron_api(ip_api):
+    try:
+        print("---------------------------------")
+        print('---------ELIMINAR DE DRON--------')
+        print("---------------------------------")
+        alias = input('Introduce el alias del dron a eliminar: ')
+
+        print(ip_api)
+        url = f'https://{ip_api}:8234/eliminar?data='+alias
+
+        requests.packages.urllib3.disable_warnings()
+        respuesta_api = requests.delete(url, verify=False)
+        respuesta_api.raise_for_status()
+        respuesta_json = respuesta_api.json()
+        msg = respuesta_json.get("mensaje")
+
+        if msg:
+            return f"{msg}"
+        else:
+            print("La respuesta es nula.")
+            return None
+
+    except Exception as e:
+        print("Error en la solicitud:", e)
+        return None
 
 def envia_token(id_dron,token):
     ipEngine = sys.argv[1]
@@ -409,11 +433,11 @@ def main():
                             token = respuesta.split(".")[1]
                             print("Dron creado con id: "+id_dron+" y token: "+token)
                         elif opc == '2':
-                            #EDITA DRON
-                            print("Dron editado")
+                            editado = edita_dron_api(sys.argv[5])
+                            print(editado)
                         elif opc == '3':
-                            #BORRA DRON
-                            print("Dron eliminado")
+                            borrado = elimina_dron_api(sys.argv[5])
+                            print(borrado)
                         else:
                             print("OPCIÓN INCORRECTA")
                     elif opc == '3':
