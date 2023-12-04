@@ -9,8 +9,14 @@ import pickle
 import ssl
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
+from flask import Flask, jsonify, request, send_file
+
+app = Flask(__name__)
+
+CONEX_ACTIVAS = 0
 
 FORMATO = 'utf-8'
+
 
 TOPIC = 'mov2'  # Nombre del tópico de Kafka
 TOPIC_OK = 'espec2'
@@ -119,23 +125,28 @@ def handle_client(client_socket, addr):
     print(f"Cliente conectado desde {addr}")
     
     # Recibir datos del cliente 
-    data = client_socket.recv(1024).decode('utf-8')
+    data = client_socket.recv(2048).decode('utf-8')
     token = data
-    print(token)
+    print("TOKEN: "+token)
     
-    # Verificar el registro en la base de datos
-    if verificar_registro(token):
-        try:
+    try:
+        # Verificar el registro en la base de datos
+        if verificar_registro(token):
             # Cliente registrado, enviar mensaje de OK
-            msj = 'OK'
+            if client_socket.fileno() != -1:
+                client_socket.send(msj.encode(FORMATO))
+            else:
+                print("El cliente ya ha cerrado la conexión.")
+        else:
+            # Cliente no registrado, enviar mensaje para registrarse
+            msj = 'Por favor, regístrese.'
             client_socket.send(msj.encode(FORMATO))
-        except Exception as e:
-            print(f"Error de SSL: {e}")
-    else:
-        # Cliente no registrado, enviar mensaje para registrarse
-        msj = 'Por favor, regístrese.'
-        client_socket.send(msj.encode(FORMATO))
-    
+    except BrokenPipeError as e:
+        # Capturar la excepción específica de BrokenPipeError
+        print(f"Error de Broken Pipe: {e}")
+    except Exception as e:
+        print(f"Error de SSL: {e}")
+
     # Cerrar la conexión con el cliente
     client_socket.close()
     print(f"Cliente {addr} desconectado.")
@@ -262,6 +273,67 @@ def calcular_pos(mapa):
         print("Movimiento no válido.")
 
 
+@app.route('/logs', methods=['GET'])
+def get_log_api():
+    try:
+        ##Consulta en base de datos del mapa
+        respuesta={
+            ##Resultado de la consulta
+        }
+
+        return jsonify(respuesta)
+        
+    except Exception as e:
+        print("ERROR en endpoint GET /logs: "+e)
+
+@app.route('/dron', methods=['GET'])
+def get_dron_api():
+    try:
+        ##Consulta en base de datos del mapa
+        respuesta={
+            ##Resultado de la consulta
+        }
+
+        return jsonify(respuesta)
+        
+    except Exception as e:
+        print("ERROR en endpoint GET /dron: "+e)
+
+@app.route('/mapa', methods=['GET'])
+def get_mapa_api():
+    try:
+        ##Consulta en base de datos del mapa
+        respuesta={
+            ##Resultado de la consulta
+        }
+
+        return jsonify(respuesta)
+
+    except Exception as e:
+        print("ERROR en endpoint GET /mapa: "+e)
+
+@app.route('/token', methods=['POST'])
+def verificar_token_api():
+    try:
+        global CONEX_ACTIVAS
+        ip = request.remote_addr
+        token = request.args.get('data')
+
+        if verificar_registro(token):
+            msj = 'OK'
+            CONEX_ACTIVAS = CONEX_ACTIVAS + 1
+        else:
+            msj = 'Por favor, regístrese'
+
+        respuesta = {
+            'mensaje': msj,
+        }
+
+        return jsonify(respuesta)
+
+    except Exception as e:
+        print("ERROR en endpoint POST /token: "+str(e))
+
 def comprueba_drones(ids):
     mayor = 0
     idd = 0
@@ -288,6 +360,12 @@ def menu():
 HOST = 'localhost'  # Dirección IP del servidor
 PORT = int(sys.argv[1])        # Puerto del servidor PARAMETRIZAR
 
+def handle_api():
+    try:
+        app.run(debug=False, port=PORT, host="0.0.0.0", ssl_context=('claves/certServ.pem','claves/certServ.pem'), threaded=True)
+    except Exception as e:
+        print(e)
+
 def main():
     if len(sys.argv[1:]) < 5:
         sys.exit(1)
@@ -307,33 +385,11 @@ def main():
         print("ERROR: HAY MENOS CONEXCIONES QUE DRONES PARA EL ESPECTACULO")
         sys.exit(1)
 
-    # Crear un socket seguro
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    ssl_context.load_cert_chain(certfile='claves/certificado_engine.pem', keyfile="claves/clave_engine.key")
 
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((HOST, PORT))
-    server_socket.listen(5)
-    CONEX_ACTIVAS = 0
-    print(f"Servidor en el puerto {PORT} esperando conexiones...")
-    ciudad = 'Minnesota'
-
-
+    api_thread = threading.Thread(target=handle_api, args=[])
+    api_thread.start()
     try:
-        while True:
-            # Esperar a que un cliente se conecte
-            client_socket, addr = server_socket.accept()
-            ssl_socket = ssl_context.wrap_socket(client_socket, server_side=True)
-
-            # Crear un nuevo subproceso para manejar la conexión del cliente
-            client_thread = threading.Thread(target=handle_client, args=(ssl_socket, addr))
-            client_thread.start()
-            #Hilo para el servidor de clima
-            clima_thread = threading.Thread(target=consulta_clima, args=(ciudad,))
-            clima_thread.start()
-
-            # Iniciar el hilo para enviar mensajes "OK" periódicamente
-            CONEX_ACTIVAS = CONEX_ACTIVAS + 1
+        while True:            
             print("CONEX_ACTIVAS: " + str(CONEX_ACTIVAS))
             if MAX_CONEXIONES == CONEX_ACTIVAS or CONEX_ACTIVAS == drones_json:
                 time.sleep(1)
@@ -373,16 +429,12 @@ def main():
                     envia_mapa(msg)
                     print("ESPECTACULO FINALIZADO")
                 elif opc == '2':
-                    raise Exception()
+                    sys.exit()
                 else:
                     print("Opcion incorrecta")
 
     except Exception:
         sys.exit()
-    finally:
-        # Cerrar el socket del servidor al finalizar
-        server_socket.close()
-        print("FINNN")
 
 if __name__ == "__main__":
     main()

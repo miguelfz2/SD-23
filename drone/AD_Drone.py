@@ -180,13 +180,16 @@ def envia_token(id_dron,token):
     ADDR_eng = (ipEngine,puertoEngine)
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    ssl_context = ssl._create_unverified_context()
-    ssl_conn = ssl_context.wrap_socket(client, server_hostname=ipEngine)
-    ssl_conn.connect(ADDR_eng)
+    try:
+        ssl_context = ssl._create_unverified_context()
+        token_conn = ssl_context.wrap_socket(client, server_hostname=ipEngine)
+        token_conn.connect(ADDR_eng)
 
-    send(token,ssl_conn)
+        token_conn.send(token.encode(FORMATO))
 
-    respuesta = client.recv(2048).decode(FORMATO)
+        respuesta = client.recv(2048).decode(FORMATO)
+    except Exception as e:
+        print("EXCEPTION ENVIA TOKEN: "+e)
     print(respuesta)
     if respuesta == "OK":
         return True
