@@ -391,6 +391,7 @@ def main():
     try:
         while True:            
             print("CONEX_ACTIVAS: " + str(CONEX_ACTIVAS))
+            time.sleep(7)
             if MAX_CONEXIONES == CONEX_ACTIVAS or CONEX_ACTIVAS == drones_json:
                 time.sleep(1)
                 opc = '0'

@@ -177,24 +177,22 @@ def elimina_dron_api(ip_api):
 def envia_token(id_dron,token):
     ipEngine = sys.argv[1]
     puertoEngine = int(sys.argv[2])
-    ADDR_eng = (ipEngine,puertoEngine)
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
-        ssl_context = ssl._create_unverified_context()
-        token_conn = ssl_context.wrap_socket(client, server_hostname=ipEngine)
-        token_conn.connect(ADDR_eng)
+        url = f'https://{ipEngine}:{puertoEngine}/token?data='+token
+        requests.packages.urllib3.disable_warnings()
+        respuesta_api = requests.post(url,verify=False)
+        respuesta_api.raise_for_status()
+        respuesta_json = respuesta_api.json()
+        respuesta = respuesta_json.get("mensaje")
 
-        token_conn.send(token.encode(FORMATO))
-
-        respuesta = client.recv(2048).decode(FORMATO)
+        if respuesta == "OK":
+            return True
+        else:
+            return False
     except Exception as e:
-        print("EXCEPTION ENVIA TOKEN: "+e)
-    print(respuesta)
-    if respuesta == "OK":
-        return True
-    else:
-        return False
+        print("EXCEPTION en ENVIA_TOKEN: "+str(e))
+
 
 def consume_comienzo(id_dron):
     consumer = KafkaConsumer(TOPIC_OK, bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS, auto_offset_reset='latest', group_id='espectaculo-group-'+id_dron)
@@ -453,7 +451,7 @@ def main():
                     print()
                     print("OPCIÓN INCORRECTA")
         except Exception as e:
-            print("ERROR: NO SE PUEDO ESTABLECER LA CONEXION: "+str(e))
+            print("ERROR: NO SE PUDO ESTABLECER LA CONEXION: "+str(e))
 
 if __name__ == "__main__":
     main()
