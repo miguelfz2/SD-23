@@ -50,8 +50,9 @@ def registrar_dron(alias, cursor):
         ultimo_id = obtener_ultimo_id(cursor)
         nuevo_id = ultimo_id + 1
         token_acceso = generar_token(nuevo_id)
-        nuevo_dron = (nuevo_id, alias, token_acceso)
-        cursor.execute('INSERT INTO dron (id, alias, token) VALUES (?, ?, ?)', nuevo_dron)
+        pos = "(1, 1)"
+        nuevo_dron = (nuevo_id, alias, token_acceso, pos)
+        cursor.execute('INSERT INTO dron (id, alias, token, posicion) VALUES (?, ?, ?, ?)', nuevo_dron)
         #cursor.connection.commit()
     except Exception as e:
         print(e)

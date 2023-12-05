@@ -6,6 +6,7 @@ import time
 import json
 import sys
 import pickle
+import requests
 import ssl
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
@@ -40,8 +41,60 @@ def verificar_registro(token):
     conn.close()
     return result is not None
 
-# Función que consulta al servidor de clima la temperatura de la zona
+def actualizar_bd(id_dron, pos):
+    try:
+        # Conectar a la base de datos
+        conexion = sqlite3.connect(DB_FILE)
+        cursor = conexion.cursor()
 
+        # Actualizar la posición del dron en la base de datos
+        cursor.execute('UPDATE dron SET posicion = ? WHERE id = ?', (pos, id_dron))
+        conexion.commit()
+
+    except Exception as e:
+        print(f"Error al actualizar la base de datos: {e}")
+
+    finally:
+        # Cerrar la conexión
+        conexion.close()
+
+def obtener_temperatura(ciudad):
+    api_key = "38f1ca83afe2c1e000674be068a20e1c"
+    # URL de la API de OpenWeatherMap
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={api_key}"
+
+    try:
+        # Realizar la solicitud a la API
+        respuesta = requests.get(url)
+        datos = respuesta.json()
+
+        # Verificar si la solicitud fue exitosa
+        if respuesta.status_code == 200:
+            # Obtener la temperatura actual desde los datos
+            temperatura = datos['main']['temp']
+            
+            # Convertir la temperatura de Kelvin a Celsius (restar 273.15)
+            temperatura_celsius = temperatura - 273.15
+            return temperatura_celsius > 0
+        else:
+            print(f"Error al obtener datos. Código de estado: {respuesta.status_code}")
+    except Exception as e:
+        print(f"No se pudo conectar con el servidor")
+        return False
+
+
+def obtener_ciudad():
+    try:
+        with open("./ciudades.txt", 'r') as archivo:
+            # Leer la primera línea del archivo
+            ciudad = archivo.readline().strip()
+            return ciudad
+    except Exception as e:
+        print(f"Error al leer el archivo: {e}")
+        return None
+
+
+# Función que consulta al servidor de clima la temperatura de la zona
 def consulta_clima(ciudad):
     try:
         ip_clima = sys.argv[3]
@@ -403,13 +456,15 @@ def main():
                     envia_pares(pares)
                     comp = False
                     while comp == False:
-                        if consulta_clima(ciudad) == True: 
+                        ciudad = obtener_ciudad()
+                        if obtener_temperatura(ciudad) == True: 
                             contador = 0
                             drones_act = drones_json 
                             while contador < drones_act:        
                                 id_dron, pos = calcular_pos(mapa)
                                 if id_dron is not None and pos is not None:
                                     cambiar_mapa(id_dron, pos, mapa)
+                                    actualizar_bd(id_dron, pos)
                                     msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
                                     print(msg)
                                     envia_mapa(msg)
