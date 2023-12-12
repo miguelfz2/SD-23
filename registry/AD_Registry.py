@@ -207,7 +207,7 @@ context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 context.load_cert_chain(certfile='claves/certificado_registro.pem', keyfile="claves/clave_registro.key")
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_host = 'localhost'
+server_host = '192.168.1.220'
 server_socket.bind((server_host, server_port))
 server_socket.listen(5)
 

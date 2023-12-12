@@ -1,7 +1,7 @@
 import socket
 import sys
 
-HOST = 'localhost'
+HOST = '192.168.1.220'
 
 if len(sys.argv[1:]) < 1:
     print("Error: formato: script.py <puerto>")

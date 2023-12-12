@@ -11,18 +11,30 @@ import ssl
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
 from flask import Flask, jsonify, request, send_file
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 CONEX_ACTIVAS = 0
 
 FORMATO = 'utf-8'
 
+def lee_topics():
+    try:
+        with open("../topics.txt", 'r') as archivo:
+            # Leer la primera línea del archivo
+            ciudad = archivo.readline().strip()
+            return ciudad
+    except Exception as e:
+        print(f"Error al leer el archivo: {e}")
+        return None
 
-TOPIC = 'mov2'  # Nombre del tópico de Kafka
-TOPIC_OK = 'espec2'
-TOPIC_PARES = 'par2'
-TOPIC_MAPA = 'mapa2'
+TOPIC = 'mov'+lee_topics()  # Nombre del tópico de Kafka
+TOPIC_OK = 'espec'+lee_topics()
+TOPIC_PARES = 'par'+lee_topics()
+TOPIC_MAPA = 'mapa'+lee_topics()
+
 # Ruta de la base de datos
 DB_FILE = r'/home/mfz/Escritorio/SD/SD-23/registry/drones.db'
 
@@ -329,7 +341,7 @@ def calcular_pos(mapa):
 @app.route('/logs', methods=['GET'])
 def get_log_api():
     try:
-        ##Consulta en base de datos del mapa
+        ##Consulta en base de datos de los logs
         respuesta={
             ##Resultado de la consulta
         }
@@ -342,9 +354,16 @@ def get_log_api():
 @app.route('/dron', methods=['GET'])
 def get_dron_api():
     try:
+        id_dron = request.args.get('data')
         ##Consulta en base de datos del mapa
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM dron WHERE id=?', (id_dron,))
+        result = cursor.fetchone()
+        conn.close()
         respuesta={
             ##Resultado de la consulta
+            'pos': result[3]
         }
 
         return jsonify(respuesta)
@@ -356,9 +375,15 @@ def get_dron_api():
 def get_mapa_api():
     try:
         ##Consulta en base de datos del mapa
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute('SELECT posicion FROM dron')
+        result = cursor.fetchall()
+        conn.close()
         respuesta={
             ##Resultado de la consulta
-        }
+            'mapa': result
+        }        
 
         return jsonify(respuesta)
 
@@ -410,7 +435,7 @@ def menu():
     return input('Elige una opción: ')
 
 # Configurar el socket del servidor
-HOST = 'localhost'  # Dirección IP del servidor
+HOST = '192.168.1.220'  # Dirección IP del servidor
 PORT = int(sys.argv[1])        # Puerto del servidor PARAMETRIZAR
 
 def handle_api():
@@ -443,8 +468,6 @@ def main():
     api_thread.start()
     try:
         while True:            
-            print("CONEX_ACTIVAS: " + str(CONEX_ACTIVAS))
-            time.sleep(7)
             if MAX_CONEXIONES == CONEX_ACTIVAS or CONEX_ACTIVAS == drones_json:
                 time.sleep(1)
                 opc = '0'
@@ -464,7 +487,8 @@ def main():
                                 id_dron, pos = calcular_pos(mapa)
                                 if id_dron is not None and pos is not None:
                                     cambiar_mapa(id_dron, pos, mapa)
-                                    actualizar_bd(id_dron, pos)
+                                    pos_str=str(pos)
+                                    actualizar_bd(id_dron, pos_str)
                                     msg = "ID: "+ id_dron + " ha actualizado su posicion a " + str(pos)
                                     print(msg)
                                     envia_mapa(msg)
@@ -485,7 +509,7 @@ def main():
                     envia_mapa(msg)
                     print("ESPECTACULO FINALIZADO")
                 elif opc == '2':
-                    sys.exit()
+                    sys.exit(1)
                 else:
                     print("Opcion incorrecta")
 

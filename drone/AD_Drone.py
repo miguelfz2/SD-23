@@ -12,10 +12,21 @@ import ssl
 import requests
 
 KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':'+sys.argv[4]  # La dirección de los brokers de Kafka
-TOPIC = 'mov2'  # Nombre del tópico de Kafka
-TOPIC_OK = 'espec2'
-TOPIC_PARES = 'par2'
-TOPIC_MAPA = 'mapa2'
+
+def lee_topics():
+    try:
+        with open("./topics.txt", 'r') as archivo:
+            # Leer la primera línea del archivo
+            topic = archivo.readline().strip()
+            return topic
+    except Exception as e:
+        print(f"Error al leer el archivo: {e}")
+        return None
+
+TOPIC = 'mov'+lee_topics()  # Nombre del tópico de Kafka
+TOPIC_OK = 'espec'+lee_topics()
+TOPIC_PARES = 'par'+lee_topics()
+TOPIC_MAPA = 'mapa'+lee_topics()
 
 FORMATO = 'utf-8'
 CABECERA = 64
