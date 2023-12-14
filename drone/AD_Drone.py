@@ -15,7 +15,7 @@ KAFKA_BOOTSTRAP_SERVERS = sys.argv[3]+':'+sys.argv[4]  # La dirección de los br
 
 def lee_topics():
     try:
-        with open("./topics.txt", 'r') as archivo:
+        with open("../topics.txt", 'r') as archivo:
             # Leer la primera línea del archivo
             topic = archivo.readline().strip()
             return topic
@@ -196,6 +196,7 @@ def envia_token(id_dron,token):
         respuesta_api.raise_for_status()
         respuesta_json = respuesta_api.json()
         respuesta = respuesta_json.get("mensaje")
+        ##clave = respuesta_json.get("clave")
 
         if respuesta == "OK":
             return True

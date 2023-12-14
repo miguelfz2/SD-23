@@ -64,10 +64,11 @@ def actualizar_bd(id_dron, pos):
         # Actualizar la posición del dron en la base de datos
         cursor.execute('UPDATE dron SET posicion = ? WHERE id = ?', (pos, id_dron))
         conexion.commit()
-        log = "localhost - ["+ str(hora()) +"] UPDATE ERROR drones.db /dron id = "+str(id_dron)
+        log = "localhost - ["+ str(hora()) +"] UPDATE POSITION drones.db /dron id = "+str(id_dron)
         logea(log)
 
     except Exception as e:
+        log = "localhost - ["+ str(hora()) +"] UPDATE POSITION ERROR drones.db /dron id = "+str(id_dron)
         logea(log)
         print(f"Error al actualizar la base de datos: {e}")
 
@@ -85,9 +86,6 @@ def obtener_temperatura(ciudad):
         respuesta = requests.get(url)
         datos = respuesta.json()
 
-        log = "37.139.1.159 - ["+ str(hora()) +"] GET temperatura HTTPS/1.1 "+str(respuesta.status_code)
-        logea(log)
-
         # Verificar si la solicitud fue exitosa
         if respuesta.status_code == 200:
             # Obtener la temperatura actual desde los datos
@@ -95,10 +93,13 @@ def obtener_temperatura(ciudad):
             
             # Convertir la temperatura de Kelvin a Celsius (restar 273.15)
             temperatura_celsius = temperatura - 273.15
+            log = "37.139.1.159 - ["+ str(hora()) +"] GET temperatura: "+str(temperatura_celsius)+" HTTPS/1.1 "+str(respuesta.status_code)
+            logea(log)
             return temperatura_celsius > 0
         else:
             print(f"Error al obtener datos. Código de estado: {respuesta.status_code}")
     except Exception as e:
+        log = "37.139.1.159 - ["+ str(hora()) +"] GET temperatura ERROR HTTPS/1.1 "+str(respuesta.status_code)
         logea(log)
         print(f"No se pudo conectar con el servidor")
         return False
@@ -461,6 +462,7 @@ def verificar_token_api():
 
         respuesta = {
             'mensaje': msj,
+            ##'clave: clave_publica'
         }
 
         return jsonify(respuesta)

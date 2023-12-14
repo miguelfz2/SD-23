@@ -29,6 +29,7 @@ def borrar_db():
 
     # Ejecutar el comando SQL
     cursor.execute(sql_query)
+    cursor.execute("DELETE FROM logs;")
 
     # Confirmar los cambios y cerrar la conexión
     conexion.commit()
