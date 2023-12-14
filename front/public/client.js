@@ -13,31 +13,48 @@ console.log('Client-side code running');
 
       if (response.ok) {
         const json = await response.json();
-        console.log(json);
+        n_dron = json['mapa'].length
 
-        // pillamos las posiciones del mapa
-        var pos = document.getElementsByClassName('mapa');
-        console.log(pos);
+        //MOSTRAR MAPA
+
       } else {
         console.error('Error en la solicitud:', response.statusText);
       }
 
       const urlDrones = 'https://192.168.1.211:23456/dron';
-      var numDrones = 
+      
+      var numDrones;
 
-      const response = await fetch(urlDrones);
+      const responseDron = await fetch(urlDrones);
 
-      if (response.ok) {
-        const json = await response.json();
+      if (responseDron.ok) {
+        const json = await responseDron.json();
         console.log(json);
 
-        // pillamos las posiciones del mapa
-        var pos = document.getElementsByClassName('mapa');
-        console.log(pos);
+        //MOSTRAR DRONES
+
       } else {
         console.error('Error en la solicitud:', response.statusText);
       }
 
+      /*
+      
+      const urlLog = 'https://192.168.1.211:23456/logs';
+      
+      var numDrones;
+
+      const responseDron = await fetch(urlDrones);
+
+      if (responseDron.ok) {
+        const json = await responseDron.json();
+        console.log(json);
+
+        //MOSTRAR DRONES
+
+      } else {
+        console.error('Error en la solicitud:', response.statusText);
+      }
+      */
     } catch (error) {
       const err = document.querySelector('.error');
       err.style.display = 'block';

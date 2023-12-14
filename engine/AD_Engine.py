@@ -12,6 +12,8 @@ from kafka import KafkaConsumer
 from kafka import KafkaProducer
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
+from io import StringIO
+import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -62,8 +64,11 @@ def actualizar_bd(id_dron, pos):
         # Actualizar la posición del dron en la base de datos
         cursor.execute('UPDATE dron SET posicion = ? WHERE id = ?', (pos, id_dron))
         conexion.commit()
+        log = "localhost - ["+ str(hora()) +"] UPDATE ERROR drones.db /dron id = "+str(id_dron)
+        logea(log)
 
     except Exception as e:
+        logea(log)
         print(f"Error al actualizar la base de datos: {e}")
 
     finally:
@@ -80,6 +85,9 @@ def obtener_temperatura(ciudad):
         respuesta = requests.get(url)
         datos = respuesta.json()
 
+        log = "37.139.1.159 - ["+ str(hora()) +"] GET temperatura HTTPS/1.1 "+str(respuesta.status_code)
+        logea(log)
+
         # Verificar si la solicitud fue exitosa
         if respuesta.status_code == 200:
             # Obtener la temperatura actual desde los datos
@@ -91,6 +99,7 @@ def obtener_temperatura(ciudad):
         else:
             print(f"Error al obtener datos. Código de estado: {respuesta.status_code}")
     except Exception as e:
+        logea(log)
         print(f"No se pudo conectar con el servidor")
         return False
 
@@ -239,6 +248,8 @@ def envia_pares(pares):
                              value_serializer=lambda v: str(v).encode('utf-8'))
 
     print("ENVIANDO PARES: "+str(pares))
+    log = str(KAFKA_BOOTSTRAP_SERVERS)+" - ["+ str(hora()) +"] SEND POSICIONES FINALES: "+str(pares)
+    logea(log)
     producer.send(TOPIC_PARES, value=pares)
     producer.flush()
 
@@ -246,6 +257,8 @@ def envia_mapa(msg):
     producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                              value_serializer=lambda v: str(v).encode('utf-8'))
     time.sleep(1)
+    log = str(KAFKA_BOOTSTRAP_SERVERS)+" - ["+ str(hora()) +"] SEND MAPA"
+    logea(log)
     producer.send(TOPIC_MAPA, value=msg)
     producer.flush()
 
@@ -255,11 +268,15 @@ def envia_OK(ciudad):
     val = ''
     if consulta_clima(ciudad) == True:
         val = 'OK'
+        log = str(KAFKA_BOOTSTRAP_SERVERS)+" - ["+ str(hora()) +"] SEND TEMPERATURA OK"
+        logea(log)
         producer.send(TOPIC_OK, value=val)
         producer.flush()
     while True:
         if consulta_clima(ciudad) == False:
             val = 'Hace mucho frio.'
+            log = str(KAFKA_BOOTSTRAP_SERVERS)+" - ["+ str(hora()) +"] SEND TEMPERATURA BAJA"
+            logea(log)
             producer.send(TOPIC_OK, value=val)
             producer.flush()
         time.sleep(5)
@@ -337,24 +354,48 @@ def calcular_pos(mapa):
     else:
         print("Movimiento no válido.")
 
+def hora():
+    return datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S.%f')[:-3]
+
+def logea(log):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO logs (texto) VALUES (?)', (log,))
+    conn.commit()
+    conn.close()
+
 
 @app.route('/logs', methods=['GET'])
 def get_log_api():
     try:
         ##Consulta en base de datos de los logs
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute('SELECT texto FROM logs')
+        result = cursor.fetchall()
+        conn.close()
         respuesta={
             ##Resultado de la consulta
+            'logs': result
         }
 
         return jsonify(respuesta)
         
     except Exception as e:
+        log = str(request.remote_addr)+" - ["+ str(hora()) +"] GET /logs HTTPS/1.1 500"
+        logea(log)
         print("ERROR en endpoint GET /logs: "+e)
 
 @app.route('/dron', methods=['GET'])
 def get_dron_api():
     try:
         id_dron = request.args.get('data')
+        ##Guardar log
+        ip = request.remote_addr
+        fecha = hora()
+        log = str(request.remote_addr)+" - ["+ str(fecha) +"] GET /dron id = "+str(id_dron)+" HTTPS/1.1 200"
+        logea(log)
+
         ##Consulta en base de datos del mapa
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -368,12 +409,20 @@ def get_dron_api():
 
         return jsonify(respuesta)
         
-    except Exception as e:
-        print("ERROR en endpoint GET /dron: "+e)
+    except Exception as e:        
+        log = str(request.remote_addr)+" - ["+ str(fecha) +"] GET /dron id = "+str(id_dron)+" HTTPS/1.1 500"
+        logea(log)
+        print("ERROR en endpoint GET /dron: "+str(e))
 
 @app.route('/mapa', methods=['GET'])
 def get_mapa_api():
     try:
+        ##Guardar log
+        ip = request.remote_addr
+        fecha = hora()
+        log = str(request.remote_addr)+" - ["+ str(fecha) +"] GET /mapa HTTPS/1.1 200"
+        logea(log)
+
         ##Consulta en base de datos del mapa
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -388,14 +437,21 @@ def get_mapa_api():
         return jsonify(respuesta)
 
     except Exception as e:
-        print("ERROR en endpoint GET /mapa: "+e)
+        print("ERROR en endpoint GET /mapa: "+str(e))
+        log = str(request.remote_addr)+" - ["+ str(fecha) +"] GET /mapa HTTPS/1.1 500"
+        logea(log)
+
 
 @app.route('/token', methods=['POST'])
 def verificar_token_api():
     try:
         global CONEX_ACTIVAS
-        ip = request.remote_addr
         token = request.args.get('data')
+        #Guardar log
+        ip = request.remote_addr
+        fecha = hora()
+        log = str(request.remote_addr)+" - ["+ str(fecha) +"] POST /token HTTPS/1.1 200"
+        logea(log)
 
         if verificar_registro(token):
             msj = 'OK'
@@ -411,6 +467,8 @@ def verificar_token_api():
 
     except Exception as e:
         print("ERROR en endpoint POST /token: "+str(e))
+        log = str(request.remote_addr)+" - ["+ str(fecha) +"] POST /token HTTPS/1.1 500"
+        logea(log)
 
 def comprueba_drones(ids):
     mayor = 0
