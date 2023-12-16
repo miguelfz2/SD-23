@@ -405,6 +405,7 @@ def get_dron_api():
         conn.close()
         respuesta={
             ##Resultado de la consulta
+            'alias': result[1],
             'pos': result[3]
         }
 
@@ -495,7 +496,7 @@ def menu():
     return input('Elige una opción: ')
 
 # Configurar el socket del servidor
-HOST = '192.168.1.220'  # Dirección IP del servidor
+HOST = '192.168.1.211'  # Dirección IP del servidor
 PORT = int(sys.argv[1])        # Puerto del servidor PARAMETRIZAR
 
 def handle_api():

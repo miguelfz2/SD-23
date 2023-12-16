@@ -11,6 +11,11 @@ body {
   src: url(god-of-war.ttf);
 }
 
+@font-face{
+  font-family: ponderosa;
+  src: url(Ponderosa.ttf);
+}
+
 .mapa {
   display: grid;
   grid-template-columns: repeat(20, 1fr);
@@ -68,5 +73,48 @@ body {
 #error p {
   font-size: 18px;
 }
+
+.dron-container {
+  background-color: rgba(255, 255, 255, 0.8); /* Fondo blanco atenuado */
+  padding: 10px;
+  margin: 20px;
+  border: 2px solid #fff; /* Borde resaltado */
+  border-radius: 5px;
+  max-width: 600px; /* Ajusta el ancho máximo según tus necesidades */
+  align-items: center;
+}
+
+.dron-info {
+  background-color: #333; /* Color de fondo más oscuro */
+  padding: 10px; /* Añadir un espacio de relleno para separar del borde */
+  margin: 5px 0; /* Añadir un margen para separar de otros elementos */
+  border-radius: 5px; /* Añadir bordes redondeados */
+  color: #fff; /* Color de texto blanco */
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-family: ponderosa;
+}
+
+/* ... Tu código CSS actual ... */
+
+#openLogsButton {
+  background-color: #4CAF50; /* Color de fondo verde */
+  color: white; /* Color de texto blanco */
+  padding: 10px 15px; /* Añadir espacio de relleno */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.logs-button {
+  position: absolute;
+  top: 95%;
+  right: 10%;
+  margin-top: 10px; /* Ajustar según sea necesario */
+  margin-right: 10px; /* Ajustar según sea necesario */
+}
+
+/* ... Resto de tu código CSS ... */
+
 
 
