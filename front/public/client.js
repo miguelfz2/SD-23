@@ -1,6 +1,12 @@
 console.log('Client-side code running');
 
 (function() {
+  const warning = document.querySelector('.msg_fin');
+  warning.style.display = 'none';
+
+  const warning2 = document.querySelector('.msg_tiempo');
+  warning2.style.display = 'none';
+  
   // Crear el contenedor de drones una vez fuera del intervalo
   const dronContainer = document.getElementById('dron-container');
 
@@ -42,6 +48,33 @@ console.log('Client-side code running');
       console.error(error);
     }
   });
+  setInterval(async function(){
+    const url = 'https://192.168.1.211:23456/estado';
+    const response = await fetch(url);
+
+    if(response.ok){
+      const json = await response.json();
+      const respuesta = json['estado'];
+      if(respuesta == "Espectaculo en movimiento"){
+        const warning = document.querySelector('.msg_fin');
+        warning.style.display = 'none';
+        const warning2 = document.querySelector('.msg_tiempo');
+        warning2.style.display = 'none';
+        document.querySelector('.mapa').style.display = 'grid';
+      }
+      else if(respuesta == "CONDICIONES ADVERSAS"){
+        const warning = document.querySelector('.msg_tiempo');
+        warning.style.display = 'block';
+        document.querySelector('.mapa').style.display = 'none';
+      }
+      else if(respuesta == "ESPECTACULO FINALIZADO"){
+        const warning = document.querySelector('.msg_fin');
+        warning.style.display = 'block';
+        document.querySelector('.mapa').style.display = 'none';
+      }
+    }
+
+  }, 10000);
   setInterval(async function() {
     try {
       const err = document.querySelector('.error');
@@ -100,7 +133,7 @@ console.log('Client-side code running');
     } catch (error) {
       const err = document.querySelector('.error');
       err.style.display = 'block';
-
+      document.querySelector('.mapa').style.display = 'none';
       console.error(error);
     }
   }, 1000);

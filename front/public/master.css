@@ -114,7 +114,54 @@ body {
   margin-right: 10px; /* Ajustar según sea necesario */
 }
 
-/* ... Resto de tu código CSS ... */
+
+.msg_fin {
+    background-color: black;
+    text-align: center;
+    font-family: gameFont;
+    font-size: 100px;
+    color: white;
+    margin: 10%;
+    position: absolute;
+    z-index: 1;
+    width: 80%;
+    height: 80%;
+    border-radius:15px;
+    shape-outside: polygon(50% 0%, 0% 50%, 50% 100%, 100% 50%);
+}
+
+#msg_fin h1 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+#msg_fin p {
+  font-size: 18px;
+}
+
+.msg_tiempo {
+    background-color: black;
+    text-align: center;
+    font-family: gameFont;
+    font-size: 100px;
+    color: white;
+    margin: 10%;
+    position: absolute;
+    z-index: 1;
+    width: 80%;
+    height: 80%;
+    border-radius:15px;
+    shape-outside: polygon(50% 0%, 0% 50%, 50% 100%, 100% 50%);
+}
+
+#msg_tiempo h1 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+#msg_tiempo p {
+  font-size: 18px;
+}
 
 
 

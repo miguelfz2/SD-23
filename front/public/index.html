@@ -5,12 +5,7 @@
     <title>Art with drones</title>
     <link rel="stylesheet" href="master.css">
   </head>
-  <body>
-    <div class="error">
-      <h1>Server is down</h1>
-      <p>please wait until the server recovers</p>
-    </div>
-  
+  <body>  
     <div class="web-title"> 
       <div class="text"> ART WITH DRONES </div> 
     </div>  
@@ -20,6 +15,19 @@
 
     <div id="dron-container" class="dron-container"></div>
     <button id="openLogsButton" class="logs-button">Logs</button>
+    <div class="error" id="error">
+      <h1>Servidor caído</h1>
+      <p>Por favor, espere a qué el servidor se recuepere</p>
+    </div>
+    <div class="msg_fin" id="msg_fin">
+      <h1>Espectáculo finalizado</h1>
+      <p>Espere a qué el servidor inicie otro</p>
+    </div>
+    <div class="msg_tiempo" id="msg_tiempo">
+      <h1>Condiciones adversas</h1>
+      <p>Drones volviendo a la base</p>
+    </div>
+
     <script type="module" src="client.js"></script>
   </body>
 
