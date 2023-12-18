@@ -46,14 +46,61 @@ def generar_token(id):
     token = "token"+str_id  
     return token
 
+def eliminar_tokens_antiguos(cursor):
+    try:
+        if hay_drones_en_db(cursor):
+            tiempo_limite = datetime.datetime.now() - datetime.timedelta(seconds=20)
+            tiempo_limite = tiempo_limite.replace(microsecond=0) 
+            cursor.execute('UPDATE dron SET token = NULL WHERE timestamp < ?', (tiempo_limite,))
+    except Exception as e:
+        print(e)
+
+
+def hay_drones_en_db(cursor):
+    try:
+        # Comprobar si hay drones en la base de datos
+        cursor.execute('SELECT COUNT(*) FROM dron')
+        cantidad_drones = cursor.fetchone()[0]
+        return cantidad_drones > 0
+    except Exception as e:
+        print(e)
+        return False
+
+
+def eliminar_tokens_periodicamente():
+    while True:
+        try:
+            conexion = obtener_conexion()
+            cursor = obtener_cursor(conexion)
+            eliminar_tokens_antiguos(cursor)
+            conexion.commit()
+            conexion.close()
+        except Exception as e:
+            print(e)
+
+
+def obtener_nuevo_token(id_dron, cursor):
+    try:
+        nuevo_token = generar_token(id_dron)
+        timestamp_actualizacion = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        cursor.execute('UPDATE dron SET token = ?, timestamp = ? WHERE id = ?', (nuevo_token, timestamp_actualizacion, id_dron))        
+    except Exception as e:
+        print(e)
+    return nuevo_token
+
 def registrar_dron(alias, cursor):
     try:
         ultimo_id = obtener_ultimo_id(cursor)
         nuevo_id = ultimo_id + 1
         token_acceso = generar_token(nuevo_id)
         pos = "(1, 1)"
-        nuevo_dron = (nuevo_id, alias, token_acceso, pos)
-        cursor.execute('INSERT INTO dron (id, alias, token, posicion) VALUES (?, ?, ?, ?)', nuevo_dron)
+        timestamp_creacion = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        nuevo_dron = (nuevo_id, alias, token_acceso, pos, timestamp_creacion)
+        cursor.execute('''
+            INSERT INTO dron (id, alias, token, posicion, timestamp) 
+            VALUES (?, ?, ?, ?, ?)
+        ''', nuevo_dron)
         #cursor.connection.commit()
     except Exception as e:
         print(e)
@@ -175,6 +222,32 @@ def editar_dron_api():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/obtener_token/<int:id_dron>', methods=['GET'])
+def obtener_token_api(id_dron):
+    try:
+        conexion = obtener_conexion()
+        cursor = obtener_cursor(conexion)
+
+        # Verificar si el dron con el ID dado existe
+        cursor.execute('SELECT * FROM dron WHERE id = ?', (id_dron,))
+        dron = cursor.fetchone()
+
+        if dron:
+            nuevo_token = obtener_nuevo_token(id_dron, cursor)
+            conexion.commit()
+            conexion.close()
+
+            respuesta = {'token': nuevo_token}
+            return jsonify(respuesta)
+
+        else:
+            return jsonify({'error': 'Dron no encontrado con el ID proporcionado.'}), 404
+
+    except Exception as e:
+        print(e)
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/eliminar', methods=['DELETE'])
 def eliminar_dron_api():
     try:
@@ -216,6 +289,9 @@ borrar_db()
 print(f"Esperando solicitudes de registro en {server_host}:{server_port}...")
 api_thread = threading.Thread(target=handle_api, args=[])
 api_thread.start()
+
+eliminar_drones_thread = threading.Thread(target=eliminar_tokens_periodicamente)
+eliminar_drones_thread.start()
 
 while True:
     client_socket, client_address = server_socket.accept()

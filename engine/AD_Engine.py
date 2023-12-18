@@ -38,13 +38,28 @@ TOPIC_PARES = 'par'+lee_topics()
 TOPIC_MAPA = 'mapa'+lee_topics()
 
 # Ruta de la base de datos
-DB_FILE = r'/home/mfz/Escritorio/SD/SD-23/registry/drones.db'
+DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 
 # Dirección de los brokers de Kafka y nombre del tópico
 KAFKA_BOOTSTRAP_SERVERS = sys.argv[3] + ":" + sys.argv[4] ##PARAMETRIZAR
 
 # Maximo numero de drones
 MAX_CONEXIONES = int(sys.argv[2]) ##PARAMETRIZAR
+
+def actualizar_token_a_null(token):
+    # Conectar a la base de datos
+    conexion = sqlite3.connect(DB_FILE)
+    cursor = conexion.cursor()
+
+    try:
+        # Actualizar el valor de token a NULL en la tabla "dron"
+        cursor.execute("UPDATE dron SET token = NULL WHERE token = ?", (token,))
+        conexion.commit()
+    except Exception as e:
+        print(f"Error al actualizar el valor de token: {e}")
+    finally:
+        # Cerrar la conexión
+        conexion.close()
 
 # Función para verificar el token y el alias en la base de datos
 def verificar_registro(token):
@@ -482,6 +497,7 @@ def verificar_token_api():
         logea(log)
 
         if verificar_registro(token):
+            actualizar_token_a_null(token)
             msj = 'OK'
             CONEX_ACTIVAS = CONEX_ACTIVAS + 1
         else:

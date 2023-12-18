@@ -54,7 +54,8 @@ def menu_sock_api():
     print("---------------------------------")
     print('1. Unirse por socket')
     print('2. Unirse por API')
-    print('3. Salir')
+    print('3. Obtener token')
+    print('4. Salir')
 
     return input('Elige una opción: ')
 
@@ -158,6 +159,30 @@ def elimina_dron(client):
     cadena = "3."+alias
     client.send(cadena.encode(FORMATO))
     respuesta = client.recv(2048).decode(FORMATO)
+
+def obtener_token_dron(ip_api, id_dron):
+    try:
+        print("---------------------------------")
+        print('------OBTENCIÓN DE TOKEN--------')
+        print("---------------------------------")
+
+        url = f'https://{ip_api}:8234/obtener_token/{id_dron}'
+
+        requests.packages.urllib3.disable_warnings()
+        respuesta_api = requests.get(url, verify=False)
+        respuesta_api.raise_for_status()
+        respuesta_json = respuesta_api.json()
+        token = respuesta_json.get("token")
+
+        if token:
+            return token
+        else:
+            print("La respuesta no contiene un token válido.")
+            return None
+
+    except Exception as e:
+        print("Error en la solicitud:", e)
+        return None
 
 def elimina_dron_api(ip_api):
     try:
@@ -454,6 +479,10 @@ def main():
                         else:
                             print("OPCIÓN INCORRECTA")
                     elif opc == '3':
+                        ip_api = sys.argv[5]
+                        token = obtener_token_dron(ip_api, id_dron)
+                        print(token)
+                    elif opc == '4':
                         sys.exit()
                     else:
                         print("OPCIÓN INCORRECTA")
