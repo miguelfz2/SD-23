@@ -38,7 +38,7 @@ TOPIC_PARES = 'par'+lee_topics()
 TOPIC_MAPA = 'mapa'+lee_topics()
 
 # Ruta de la base de datos
-DB_FILE = r'/home/mfz/Escritorio/SD/SD-23/registry/drones.db'
+DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
 
 # Dirección de los brokers de Kafka y nombre del tópico
 KAFKA_BOOTSTRAP_SERVERS = sys.argv[3] + ":" + sys.argv[4] ##PARAMETRIZAR
@@ -505,11 +505,60 @@ def handle_api():
     except Exception as e:
         print(e)
 
+def borrar_contenido_espectaculo():
+    # Conectar a la base de datos
+    conexion = sqlite3.connect(DB_FILE)
+    cursor = conexion.cursor()
+
+    try:
+        # Borrar todo el contenido de la tabla espectaculo
+        cursor.execute("DELETE FROM espectaculo")
+        # Confirmar la eliminación
+        conexion.commit()
+    except sqlite3.Error as e:
+        print("Error al borrar el contenido de la tabla 'espectaculo'")
+    finally:
+        conexion.close()
+
+def insertar_espectaculo(id_espectaculo, estado):
+    # Conectar a la base de datos
+    conexion = sqlite3.connect(DB_FILE)
+    cursor = conexion.cursor()
+
+    try:
+        # Insertar un nuevo registro en la tabla espectaculo
+        cursor.execute("INSERT INTO espectaculo (id, estado) VALUES (?, ?)", (id_espectaculo, estado))
+        # Confirmar la inserción
+        conexion.commit()
+    except sqlite3.Error as e:
+        print("Error al insertar el nuevo registro en la tabla 'espectaculo'")
+    finally:
+        conexion.close()
+
+def actualizar_estado_espectaculo(id_espectaculo, nuevo_estado):
+    # Conectar a la base de datos
+    conexion = sqlite3.connect("drones.db")
+    cursor = conexion.cursor()
+
+    try:
+        # Actualizar el estado del espectáculo con el nuevo valor
+        cursor.execute("UPDATE espectaculo SET estado = ? WHERE id = ?", (nuevo_estado, id_espectaculo))
+        # Confirmar la actualización
+        conexion.commit()
+    except sqlite3.Error as e:
+        # Imprimir un mensaje en caso de error
+        print("Error al actualizar el estado:")
+    finally:
+        # Cerrar la conexión a la base de datos
+        conexion.close()
+
 def main():
     if len(sys.argv[1:]) < 5:
         sys.exit(1)
     mapa = construir_mapa()
     mapa_final = construir_mapa()
+    borrar_contenido_espectaculo()
+    insertar_espectaculo(1,"Espectaculo en movimiento")
     limpiar_mapa(mapa)
     limpiar_mapa(mapa_final)
     pares = leer_json("./json/figura_simple.json")
@@ -563,10 +612,12 @@ def main():
                             comp = son_mapas_iguales(mapa, mapa_final)
                         else:
                             print("CONDICIONES ADVERSAS")
+                            actualizar_estado_espectaculo(1,"CONDICIONES ADVERSAS")
                             time.sleep(3)
                             mapa = construir_mapa()
                             envia_mapa("CONDICIONES ADVERSAS")
                     msg = "ESPECTACULO FINALIZADO"
+                    actualizar_estado_espectaculo(1, msg)
                     envia_mapa(msg)
                     print("ESPECTACULO FINALIZADO")
                 elif opc == '2':
