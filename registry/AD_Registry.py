@@ -160,8 +160,8 @@ def handle_client(client_socket):
     conexion.close()
     client_socket.close()
 
-if len(sys.argv) != 2:
-    print("Error: formato: script.py <puerto>")
+if len(sys.argv) != 3:
+    print("Error: formato: script.py <puerto sockets> <puerto api>")
     sys.exit(1)
 
 try:

@@ -85,7 +85,7 @@ def crea_dron(client):
     print("Tu token es "+respuesta.split(".")[1])
     return respuesta
 
-def crea_dron_api(ip_api):
+def crea_dron_api(ip_api,port):
     try:
         print("---------------------------------")
         print('--------CREACION DE DRON---------')
@@ -93,7 +93,7 @@ def crea_dron_api(ip_api):
         alias = input('Introduce el alias del dron: ')
 
         print(ip_api)
-        url = f'https://{ip_api}:8234/registrar?data='+alias
+        url = f'https://{ip_api}:{port}/registrar?data='+alias
 
         requests.packages.urllib3.disable_warnings()
         respuesta_api = requests.post(url, verify=False)
@@ -123,7 +123,7 @@ def edita_dron(client):
     client.send(cadena.encode(FORMATO))
     respuesta = client.recv(2048).decode(FORMATO)
 
-def edita_dron_api(ip_api):
+def edita_dron_api(ip_api,port):
     try:
         print("---------------------------------")
         print('--------EDICION DE DRON---------')
@@ -132,7 +132,7 @@ def edita_dron_api(ip_api):
         nuevo_alias = input('Introduce el nuevo alias: ')
 
         print(ip_api)
-        url = f'https://{ip_api}:8234/editar?data='+alias+'&nuevo='+nuevo_alias
+        url = f'https://{ip_api}:{port}/editar?data='+alias+'&nuevo='+nuevo_alias
 
         requests.packages.urllib3.disable_warnings()
         respuesta_api = requests.put(url, verify=False)
@@ -184,7 +184,7 @@ def obtener_token_dron(ip_api, id_dron):
         print("Error en la solicitud:", e)
         return None
 
-def elimina_dron_api(ip_api):
+def elimina_dron_api(ip_api,port):
     try:
         print("---------------------------------")
         print('---------ELIMINAR DE DRON--------')
@@ -192,7 +192,7 @@ def elimina_dron_api(ip_api):
         alias = input('Introduce el alias del dron a eliminar: ')
 
         print(ip_api)
-        url = f'https://{ip_api}:8234/eliminar?data='+alias
+        url = f'https://{ip_api}:{port}/eliminar?data='+alias
 
         requests.packages.urllib3.disable_warnings()
         respuesta_api = requests.delete(url, verify=False)
@@ -466,15 +466,15 @@ def main():
 
                         if opc == '1':
                             #CREA DRON
-                            respuesta = crea_dron_api(sys.argv[5])
+                            respuesta = crea_dron_api(sys.argv[5],sys.argv[7])
                             id_dron = respuesta.split(".")[0]
                             token = respuesta.split(".")[1]
                             print("Dron creado con id: "+id_dron+" y token: "+token)
                         elif opc == '2':
-                            editado = edita_dron_api(sys.argv[5])
+                            editado = edita_dron_api(sys.argv[5],sys.argv[7])
                             print(editado)
                         elif opc == '3':
-                            borrado = elimina_dron_api(sys.argv[5])
+                            borrado = elimina_dron_api(sys.argv[5],sys.argv[7])
                             print(borrado)
                         else:
                             print("OPCIÓN INCORRECTA")

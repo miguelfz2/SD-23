@@ -38,7 +38,7 @@ TOPIC_PARES = 'par'+lee_topics()
 TOPIC_MAPA = 'mapa'+lee_topics()
 
 # Ruta de la base de datos
-DB_FILE = r'C:\Users\ayelo\OneDrive\Documentos\GitHub\SD-23\registry\drones.db'
+DB_FILE = r'/home/mfz/Escritorio/SD/SD-23/registry/drones.db'
 
 # Dirección de los brokers de Kafka y nombre del tópico
 KAFKA_BOOTSTRAP_SERVERS = sys.argv[3] + ":" + sys.argv[4] ##PARAMETRIZAR
@@ -384,11 +384,6 @@ def logea(log):
 @app.route('/estado', methods=['GET'])
 def get_estado():
     try:
-        ##Guardar log
-        fecha = hora()
-        log = str(request.remote_addr)+" - ["+ str(fecha) +"] GET /estado HTTPS/1.1 200"
-        logea(log)
-
         ##Consulta en base de datos del mapa
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -399,6 +394,10 @@ def get_estado():
             ##Resultado de la consulta
             'estado': result[0],
         }
+        ##Guardar log
+        fecha = hora()
+        log = str(request.remote_addr)+" - ["+ str(fecha) +"] GET /estado "+str(result[0])+" HTTPS/1.1 200"
+        logea(log)
 
         return jsonify(respuesta)
         
