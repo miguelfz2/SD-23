@@ -92,7 +92,7 @@ def actualizar_bd(id_dron, pos):
         conexion.close()
 
 def obtener_temperatura(ciudad):
-    api_key = "38f1ca83afe2c1e000674be068a20e1c"
+    api_key = obtener_key()
     # URL de la API de OpenWeatherMap
     url = f"http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={api_key}"
 
@@ -130,6 +130,16 @@ def obtener_ciudad():
         print(f"Error al leer el archivo: {e}")
         return None
 
+
+def obtener_key():
+    try:
+        with open("./keys.txt", 'r') as archivo:
+            # Leer la primera línea del archivo
+            key = archivo.readline().strip()
+            return key
+    except Exception as e:
+        print(f"Error al leer el archivo: {e}")
+        return None
 
 # Función que consulta al servidor de clima la temperatura de la zona
 def consulta_clima(ciudad):
